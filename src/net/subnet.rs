@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-use crate::host::Host;
+use crate::net::Host;
 use std::net::IpAddr;
 
-pub(crate) struct Subnet {
+pub struct Subnet {
     // identity
-    pub(crate) subdomain: String,
+    pub subdomain: String,
     hosts: HashMap<String, Host>,
-    pub(crate) eip: Option<IpAddr>
+    pub eip: Option<IpAddr>
 }
 
 impl Subnet {

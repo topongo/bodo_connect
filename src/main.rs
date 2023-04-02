@@ -1,17 +1,17 @@
-mod networkmap;
-mod host;
-mod subnet;
-mod ip;
-mod ssh;
+#![feature(future_join)]
 
+mod ssh;
+mod waker;
+mod net;
+
+use std::future::join;
 use std::net::IpAddr;
-use networkmap::NetworkMap;
-use subnet::Subnet;
-use host::Host;
 use std::str::FromStr;
-use external_ip::get_ip;
-use reachable::{ResolvePolicy, Target, TcpTarget};
-use futures::executor::block_on;
+use reqwest::Method;
+
+use crate::net::*;
+use crate::ssh::process::SSHProcess;
+use crate::waker::Waker;
 // use crate::router::Router;
 
 
@@ -21,7 +21,7 @@ async fn main() {
     
     // === redacted ===
 
-    let subdomain = match nm.find_current_subnet().await {
+    let subnet = match nm.find_current_subnet().await {
         Some(s) => {
             println!("You are in this subnet: {:?}", s);
             Some(s)
@@ -32,6 +32,16 @@ async fn main() {
         }
     };
 
-    nm.command_gen(nm.get_host("dell").unwrap(), subdomain).await;
+    let a_waker = nm.wake(target);
+    let a_proc = nm.to_ssh(target, subnet, Vec::new());
+
+    let (waker, mut proc): (Result<(), String>, SSHProcess) = join!(a_waker, a_proc).await;
+
+    if let Err(s) = waker {
+        panic!("waker erorr: {}", s)
+    }
+
+    eprintln!("{}", proc.get_args().join(" "));
+    proc.run(None).expect("ssh error");
 }
 

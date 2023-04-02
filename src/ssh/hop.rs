@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub(crate) struct Hop {
+pub struct Hop {
     user: String,
     host: String,
     port: u16

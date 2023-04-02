@@ -1,19 +1,19 @@
 use crate::ssh::hop::Hop;
 use crate::Host;
 
-trait SSHOption {
+pub trait SSHOption {
     fn extended_name(&self) -> bool;
     fn name(&self) -> &'static str;
     fn value(&self) -> Option<String>;
 }
 
 #[derive(Default)]
-struct SSHOptionStore {
+pub struct SSHOptionStore {
     options: Vec<Box<dyn SSHOption>>
 }
 
 impl SSHOptionStore {
-    pub fn to_string(&self) -> Vec<String> {
+    pub fn args_gen(&self) -> Vec<String> {
         let mut out = Vec::new();
         let mut coupling = false;
         for o in self.options.iter() {
@@ -44,19 +44,23 @@ impl SSHOptionStore {
 
         out
     }
+
+    pub fn add_option(&mut self, option: Box<dyn SSHOption>) {
+        self.options.push(option)
+    }
 }
 
-struct JumpHost {
+pub struct JumpHosts {
     hops: Vec<Hop>
 }
 
-impl JumpHost {
-    pub fn new() -> JumpHost { JumpHost { hops: Vec::new() } }
+impl JumpHosts {
+    pub fn new(hosts: Vec<Hop>) -> JumpHosts { JumpHosts { hops: hosts } }
 
     pub fn add_host(&mut self, h: Hop) { self.hops.push(h) }
 }
 
-impl SSHOption for JumpHost {
+impl SSHOption for JumpHosts {
     fn extended_name(&self) -> bool {
         false
     }
@@ -74,5 +78,52 @@ impl SSHOption for JumpHost {
             .collect::<Vec<String>>()
             .join(".")
         )
+    }
+}
+
+pub enum GenericOption {
+    Switch(&'static str),
+    Value(&'static str, String)
+}
+
+impl SSHOption for GenericOption {
+    fn extended_name(&self) -> bool {
+        false
+    }
+
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Switch(s) => s,
+            Self::Value(s, _) => s
+        }
+    }
+
+    fn value(&self) -> Option<String> {
+        match self {
+            Self::Switch(_) => None,
+            Self::Value(_, s) => Some(s.clone())
+        }
+    }
+}
+
+pub struct PortOption {
+    port: u16
+}
+
+impl PortOption {
+    pub fn new(port: u16) -> Self { Self { port } }
+}
+
+impl SSHOption for PortOption {
+    fn extended_name(&self) -> bool {
+        false
+    }
+
+    fn name(&self) -> &'static str {
+        "p"
+    }
+
+    fn value(&self) -> Option<String> {
+        Some(self.port.to_string())
     }
 }

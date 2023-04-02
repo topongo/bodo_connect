@@ -1,11 +1,12 @@
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::time::Duration;
 use external_ip::get_ip;
 use reachable::{IcmpTarget, ResolvePolicy, Status, Target, TcpTarget};
-use crate::ssh::hop::Hop;
-use crate::Host;
-use crate::subnet::Subnet;
+use subprocess::ExitStatus;
+use crate::ssh::{*, options::*};
+use crate::net::{Host, Subnet};
+use crate::waker::Waker;
 
 
 const CLOUD_FLARE: IpAddr = IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1));
@@ -18,7 +19,7 @@ fn get_resolve_policy(i: IpAddr) -> ResolvePolicy {
 }
 
 #[derive(Debug)]
-pub(crate) struct NetworkMap {
+pub struct NetworkMap {
     subnets: HashMap<String, Subnet>
 }
 
@@ -67,7 +68,16 @@ impl NetworkMap {
     }
 
     pub fn get_subnet_by_ip(&self, ip: IpAddr) -> Option<&Subnet> {
-        self.subnets.values().find(|s| { s.eip.is_some() && s.eip.unwrap() == ip })
+        self.subnets.values().find(|s| {
+            if s.eip.is_some() {
+                s.eip.unwrap() == ip
+            } else {
+                format!("{}:0", s.subdomain)
+                    .to_socket_addrs().unwrap()
+                    .next().unwrap()
+                    .ip() == ip
+            }
+        })
     }
 
     pub fn get_masters(&self) -> Vec<(&Subnet, &Host)> {
@@ -113,23 +123,81 @@ impl NetworkMap {
         }
     }
 
-    pub async fn hops_gen(&self, target: &Host, subnet: Option<&Subnet>) -> Vec<Hop> {
+    pub async fn hops_gen(&self, target: &Host, subnet: Option<&Subnet>) -> Option<Vec<Hop>> {
         match subnet {
             Some(_) => {
                 // known subnet
-                vec![target.get_hop(None)]
+                None
             },
             None => {
                 // unknown subnet
                 let target_subnet = self.get_host_subnet(target);
                 let master = target_subnet.get_master();
-                vec![master.get_hop(Some(target_subnet))]
+                Some(vec![master.get_hop(Some(target_subnet))])
             }
         }
     }
 
-    pub async fn command_gen(&self, target: &Host, subnet: Option<&Subnet>) {
-        let hops = self.hops_gen(target, subnet).await;
-        println!("{:?}", hops);
+    pub async fn to_ssh(&self, target: &Host, subnet: Option<&Subnet>, mut command: Vec<String>) -> SSHProcess {
+        let target_string = target.identity_string();
+
+        let mut options = SSHOptionStore::default();
+
+        if let Some(hops) = self.hops_gen(target, subnet).await {
+            options.add_option(Box::new(JumpHosts::new(hops)));
+        }
+        if let Some(p_o) = target.port_option() {
+            options.add_option(Box::new(p_o))
+        }
+
+        let mut output = vec!["ssh".to_string()];
+        output.append(&mut options.args_gen());
+        output.push(target_string);
+        output.append(&mut command);
+        SSHProcess::new(output)
+    }
+
+    pub async fn wake(&self, target: &Host) -> Result<(), String> {
+        match &target.waker {
+            None => {
+                println!("asked for wake but this target hasn't a waker");
+                Ok(())
+            },
+            Some(w) => match w {
+                Waker::HttpWaker(method, url) => {
+                    let client = reqwest::Client::new();
+                    println!("making http request to {}", url);
+                    match client.request(method.clone(), url).send().await {
+                        Ok(res) => {
+                            if res.status() == 200 {
+                                Ok(())
+                            } else {
+                                Err(format!("http error: {}", res.status()))
+                            }
+                        },
+                        Err(e) => {
+                            Err(format!("http error: {}", e))
+                        }
+                    }
+                },
+                Waker::WolWaker(mac) => {
+                    let master = self.get_host_master(target);
+                    match self.to_ssh(master, None, vec!["wol".to_string(), mac.to_string()]).await.run_stdout_to_stderr() {
+                        Ok(e) => {
+                            if let ExitStatus::Exited(n) = e {
+                                if n == 0 {
+                                    Ok(())
+                                } else {
+                                    Err(format!("ssh waker exited with code {}", n))
+                                }
+                            } else {
+                                Err(format!("ssh waker ended: {:?}", e))
+                            }
+                        },
+                        Err(e) => Err(format!("{:?}", e))
+                    }
+                }
+            }
+        }
     }
 }
