@@ -1,8 +1,10 @@
-use std::collections::HashMap;
+#![allow(dead_code)]
+
 use std::fmt::{Debug, Formatter};
-use crate::net::Host;
 use std::net::IpAddr;
 use serde::Deserialize;
+
+use crate::net::Host;
 
 #[derive(Deserialize)]
 pub struct Subnet {
@@ -20,10 +22,6 @@ impl Subnet {
     pub fn add_host(&mut self, h: Host) {
         self.hosts.push(h);
     }
-
-    // pub fn has_host(&self, q: &String) -> bool {
-    //     self.hosts.contains_key(q)
-    // }
 
     pub fn get_host(&self, q: &str) -> Option<&Host> {
         self.hosts.iter().find(|h| h.name == q)
@@ -48,5 +46,11 @@ impl Subnet {
 impl Debug for Subnet {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Subnet {{ subdomain: \"{}\", eip: {:?}, hosts: {} }}", self.subdomain, self.eip, self.hosts.len())
+    }
+}
+
+impl PartialEq for Subnet {
+    fn eq(&self, other: &Self) -> bool {
+        self.subdomain.eq(&other.subdomain)
     }
 }

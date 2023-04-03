@@ -1,4 +1,4 @@
-#![feature(future_join)]
+// #![feature(future_join)]
 extern crate core;
 
 mod ssh;
@@ -17,6 +17,7 @@ use crate::bodo_connect::BodoConnect;
 #[tokio::main]
 async fn main() {
     let mut bc: BodoConnect = bodo_connect::BodoConnect::parse();
+
     exit(match block_on(bc.main()) {
         Ok(..) => 0,
         Err(e) => {

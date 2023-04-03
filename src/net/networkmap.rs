@@ -5,6 +5,7 @@ use external_ip::get_ip;
 use log::{debug, info};
 use reachable::{IcmpTarget, ResolvePolicy, Status, Target, TcpTarget};
 use subprocess::ExitStatus;
+
 use crate::ssh::{*, options::*};
 use crate::net::{Host, Subnet};
 use crate::waker::Waker;
@@ -125,32 +126,50 @@ impl NetworkMap {
     }
 
     pub async fn hops_gen(&self, target: &Host, subnet: Option<&Subnet>) -> Option<Vec<Hop>> {
+        let target_subnet = self.get_host_subnet(target);
+        let master = target_subnet.get_master();
+        let hops = vec![master.get_hop(Some(target_subnet))];
+
         match subnet {
-            Some(_) => {
+            Some(s) => {
                 // known subnet
-                None
+                if target_subnet == s {
+                    None
+                } else {
+                    Some(hops)
+                }
             },
             None => {
                 // unknown subnet
-                let target_subnet = self.get_host_subnet(target);
-                let master = target_subnet.get_master();
-                Some(vec![master.get_hop(Some(target_subnet))])
+                Some(hops)
             }
         }
     }
 
-    pub async fn to_ssh(&self, target: &Host, subnet: Option<&Subnet>, command: &mut Vec<String>) -> SSHProcess {
+    pub async fn to_ssh(&self, target: &Host, subnet: Option<&Subnet>, command: &mut Vec<String>, eoptions: Option<SSHOptionStore>) -> SSHProcess {
+        debug!("generating target string");
         let target_string = target.identity_string();
+        info!("host string genetared: {}", target_string);
 
+        debug!("generating ssh options");
         let mut options = SSHOptionStore::default();
 
         if let Some(hops) = self.hops_gen(target, subnet).await {
+            debug!("hops required, adding to options: {:?}", hops.iter().map(|h| h.to_string()).collect::<Vec<String>>());
             options.add_option(Box::new(JumpHosts::new(hops)));
         }
         if let Some(p_o) = target.port_option() {
+            debug!("port specification needed, adding to options: {:?}", p_o);
             options.add_option(Box::new(p_o))
         }
+        info!("ssh options generated: {:?}", options.args_gen());
 
+        if let Some(o) = eoptions {
+            debug!("extra options present, merging");
+            options.merge(o);
+        }
+
+        debug!("generating ssh command");
         let mut output = vec!["ssh".to_string()];
         output.append(&mut options.args_gen());
         output.push(target_string);
@@ -161,15 +180,16 @@ impl NetworkMap {
     pub async fn wake(&self, target: &Host) -> Result<(), String> {
         match &target.waker {
             None => {
-                info!("asked for wake but this target hasn't a waker");
+                info!("won't wake host since it hasn't any waker");
                 Ok(())
             },
             Some(w) => match w {
                 Waker::HttpWaker { method, url} => {
-                    info!("making request {}@{}", method, target.name);
+                    info!("making {} request to {}", method, url);
                     let client = reqwest::Client::new();
                     match client.request(method.clone(), url).send().await {
                         Ok(res) => {
+                            debug!("status code of request: {}", res.status());
                             if res.status() == 200 {
                                 Ok(())
                             } else {
@@ -177,13 +197,18 @@ impl NetworkMap {
                             }
                         },
                         Err(e) => {
-                            Err(format!("http error: {}", e))
+                            Err(format!("request error: {}", e))
                         }
                     }
                 },
                 Waker::WolWaker { mac} => {
+                    info!("waking host with mac {} through ssh", mac);
                     let master = self.get_host_master(target);
-                    match self.to_ssh(master, None, &mut vec!["wol".to_string(), mac.to_string()]).await.run_stdout_to_stderr() {
+                    info!("master to execute wake on is {}", master.name);
+                    debug!("generating ssh command for wake operation");
+                    let mut wake_proc = self.to_ssh(master, None, &mut vec!["wol".to_string(), mac.to_string()], None).await;
+                    debug!("ssh waker command is `{}`", wake_proc.to_string());
+                    match wake_proc.run_stdout_to_stderr() {
                         Ok(e) => {
                             if let ExitStatus::Exited(n) = e {
                                 if n == 0 {

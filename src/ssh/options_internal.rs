@@ -1,5 +1,6 @@
+use std::collections::HashMap;
+
 use crate::ssh::hop::Hop;
-use crate::net::Host;
 
 pub trait SSHOption {
     fn extended_name(&self) -> bool;
@@ -9,14 +10,18 @@ pub trait SSHOption {
 
 #[derive(Default)]
 pub struct SSHOptionStore {
-    options: Vec<Box<dyn SSHOption>>
+    options: HashMap<&'static str, Box<dyn SSHOption>>
 }
 
 impl SSHOptionStore {
+    pub fn new() -> Self {
+        Self { options: HashMap::new() }
+    }
+
     pub fn args_gen(&self) -> Vec<String> {
         let mut out = Vec::new();
         let mut coupling = false;
-        for o in self.options.iter() {
+        for o in self.options.values() {
             if o.extended_name() {
                 out.push(format!("--{}", o.name()));
                 match o.value() {
@@ -46,7 +51,13 @@ impl SSHOptionStore {
     }
 
     pub fn add_option(&mut self, option: Box<dyn SSHOption>) {
-        self.options.push(option)
+        self.options.insert(option.name(), option);
+    }
+
+    pub fn merge(&mut self, other: Self) {
+        for o in other.options.into_values() {
+            self.add_option(o)
+        }
     }
 }
 
@@ -106,6 +117,7 @@ impl SSHOption for GenericOption {
     }
 }
 
+#[derive(Debug)]
 pub struct PortOption {
     port: u16
 }

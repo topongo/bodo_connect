@@ -1,5 +1,8 @@
+#![allow(dead_code)]
+
 use std::net::IpAddr;
 use serde::Deserialize;
+
 use crate::ssh::hop::Hop;
 use crate::ssh::options::PortOption;
 use crate::net::Subnet;
@@ -9,7 +12,7 @@ use crate::waker::{Waker};
 pub struct Host {
     // identity
     pub name: String,
-    uuid: String,
+    uuid: String,        // [WIP]
     pub ip: IpAddr,
     pub port: u16,
     // if this is not None then the host is a network master

@@ -18,12 +18,11 @@ pub struct ConsoleLogger;
 
 impl log::Log for ConsoleLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= Level::Info
+        metadata.level() <= Level::Debug
     }
 
     fn log(&self, record: &Record) {
-        if self.enabled(record.metadata()) {
-            // println!("[{} {:>7}] {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"), record.level(), record.args());
+        if self.enabled(record.metadata()) && record.module_path().unwrap_or("").starts_with("bodoConnect::") {
             let level = format!("{:>7}", record.level());
             eprintln!(
                 "{}: {}",
