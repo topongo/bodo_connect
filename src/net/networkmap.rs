@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::time::Duration;
 use external_ip::get_ip;
@@ -139,7 +139,7 @@ impl NetworkMap {
         }
     }
 
-    pub async fn to_ssh(&self, target: &Host, subnet: Option<&Subnet>, mut command: Vec<String>) -> SSHProcess {
+    pub async fn to_ssh(&self, target: &Host, subnet: Option<&Subnet>, command: &mut Vec<String>) -> SSHProcess {
         let target_string = target.identity_string();
 
         let mut options = SSHOptionStore::default();
@@ -154,20 +154,20 @@ impl NetworkMap {
         let mut output = vec!["ssh".to_string()];
         output.append(&mut options.args_gen());
         output.push(target_string);
-        output.append(&mut command);
+        output.append(command);
         SSHProcess::new(output)
     }
 
     pub async fn wake(&self, target: &Host) -> Result<(), String> {
         match &target.waker {
             None => {
-                println!("asked for wake but this target hasn't a waker");
+                info!("asked for wake but this target hasn't a waker");
                 Ok(())
             },
             Some(w) => match w {
                 Waker::HttpWaker { method, url} => {
+                    info!("making request {}@{}", method, target.name);
                     let client = reqwest::Client::new();
-                    println!("making http request to {}", url);
                     match client.request(method.clone(), url).send().await {
                         Ok(res) => {
                             if res.status() == 200 {
@@ -183,7 +183,7 @@ impl NetworkMap {
                 },
                 Waker::WolWaker { mac} => {
                     let master = self.get_host_master(target);
-                    match self.to_ssh(master, None, vec!["wol".to_string(), mac.to_string()]).await.run_stdout_to_stderr() {
+                    match self.to_ssh(master, None, &mut vec!["wol".to_string(), mac.to_string()]).await.run_stdout_to_stderr() {
                         Ok(e) => {
                             if let ExitStatus::Exited(n) = e {
                                 if n == 0 {
@@ -200,5 +200,23 @@ impl NetworkMap {
                 }
             }
         }
+    }
+}
+
+impl TryFrom<Vec<Subnet>> for NetworkMap {
+    type Error = String;
+
+    fn try_from(value: Vec<Subnet>) -> Result<Self, Self::Error> {
+        let mut n = NetworkMap::new();
+        let mut subs = HashSet::new();
+        for s in value.into_iter() {
+            if subs.contains(&s.subdomain) {
+                return Err(s.subdomain)
+            } else {
+                subs.insert(s.subdomain.clone());
+                n.add_subnet(s);
+            }
+        }
+        Ok(n)
     }
 }

@@ -39,4 +39,8 @@ impl SSHProcess {
         opts.stdout = Redirection::Merge;
         self.run(Some(opts))
     }
+
+    pub fn to_string(&self) -> String {
+        return self.args.join(" ")
+    }
 }

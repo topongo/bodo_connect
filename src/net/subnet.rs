@@ -8,17 +8,17 @@ use serde::Deserialize;
 pub struct Subnet {
     // identity
     pub subdomain: String,
-    hosts: HashMap<String, Host>,
+    hosts: Vec<Host>,
     pub eip: Option<IpAddr>
 }
 
 impl Subnet {
     pub fn new(subdomain: String, eip: Option<IpAddr>) -> Subnet {
-        Subnet { subdomain, eip, hosts: HashMap::new() }
+        Subnet { subdomain, eip, hosts: Vec::new() }
     }
 
     pub fn add_host(&mut self, h: Host) {
-        self.hosts.insert(h.name.clone(), h);
+        self.hosts.push(h);
     }
 
     // pub fn has_host(&self, q: &String) -> bool {
@@ -26,22 +26,22 @@ impl Subnet {
     // }
 
     pub fn get_host(&self, q: &str) -> Option<&Host> {
-        self.hosts.get(q)
+        self.hosts.iter().find(|h| h.name == q)
     }
 
     pub fn get_hosts(&self) -> Vec<&Host> {
-        self.hosts.values().collect()
+        self.hosts.iter().collect()
     }
 
     pub fn get_master(&self) -> &Host {
-        match self.hosts.values().find(|h| h.is_master()) {
+        match self.hosts.iter().find(|h| h.is_master()) {
             Some(h) => h,
             None => panic!("subnet {} has no master", self.subdomain)
         }
     }
 
     pub fn has_host(&self, h: &Host) -> bool {
-        self.hosts.contains_key(&h.name)
+        self.hosts.contains(&h)
     }
 }
 

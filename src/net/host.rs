@@ -57,3 +57,9 @@ impl Host {
         }
     }
 }
+
+impl PartialEq for Host {
+    fn eq(&self, other: &Self) -> bool {
+        self.name.eq(&other.name)
+    }
+}
