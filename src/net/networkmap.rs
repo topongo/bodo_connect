@@ -2,11 +2,13 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::time::Duration;
 use external_ip::get_ip;
+use log::{debug, info};
 use reachable::{IcmpTarget, ResolvePolicy, Status, Target, TcpTarget};
 use subprocess::ExitStatus;
 use crate::ssh::{*, options::*};
 use crate::net::{Host, Subnet};
 use crate::waker::Waker;
+
 
 
 const CLOUD_FLARE: IpAddr = IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1));
@@ -43,7 +45,6 @@ impl NetworkMap {
     }
 
     pub fn is_available(ip: IpAddr, port: Option<u16>) -> bool {
-        // return false;
         let rp = get_resolve_policy(ip);
         match match port {
             Some(p) => TcpTarget::new(
@@ -164,7 +165,7 @@ impl NetworkMap {
                 Ok(())
             },
             Some(w) => match w {
-                Waker::HttpWaker(method, url) => {
+                Waker::HttpWaker { method, url} => {
                     let client = reqwest::Client::new();
                     println!("making http request to {}", url);
                     match client.request(method.clone(), url).send().await {
@@ -180,7 +181,7 @@ impl NetworkMap {
                         }
                     }
                 },
-                Waker::WolWaker(mac) => {
+                Waker::WolWaker { mac} => {
                     let master = self.get_host_master(target);
                     match self.to_ssh(master, None, vec!["wol".to_string(), mac.to_string()]).await.run_stdout_to_stderr() {
                         Ok(e) => {

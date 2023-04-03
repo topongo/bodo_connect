@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use crate::net::Host;
 use std::net::IpAddr;
+use serde::Deserialize;
 
+#[derive(Deserialize)]
 pub struct Subnet {
     // identity
     pub subdomain: String,

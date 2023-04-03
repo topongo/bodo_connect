@@ -1,5 +1,5 @@
 use crate::ssh::hop::Hop;
-use crate::Host;
+use crate::net::Host;
 
 pub trait SSHOption {
     fn extended_name(&self) -> bool;

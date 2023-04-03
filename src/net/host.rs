@@ -1,10 +1,11 @@
 use std::net::IpAddr;
+use serde::Deserialize;
 use crate::ssh::hop::Hop;
 use crate::ssh::options::PortOption;
 use crate::net::Subnet;
-use crate::waker::Waker;
+use crate::waker::{Waker};
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub struct Host {
     // identity
     pub name: String,
