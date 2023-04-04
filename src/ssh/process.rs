@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::fmt::{Display, Formatter};
 #[cfg(feature = "log")]
 use log::debug;
 #[cfg(not(feature = "log"))]
@@ -45,12 +46,12 @@ impl SSHProcess {
 
     pub fn run_stdout_to_stderr(&mut self) -> Result<ExitStatus, PopenError> {
         debug!("passing redirecting options to ssh process");
-        let mut opts = PopenConfig::default();
-        opts.stdout = Redirection::Merge;
-        self.run(Some(opts))
+        self.run(Some(PopenConfig { stdout: Redirection::Merge, ..PopenConfig::default() }))
     }
+}
 
-    pub fn to_string(&self) -> String {
-        return self.args.join(" ")
+impl Display for SSHProcess {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.args.join(" "))
     }
 }

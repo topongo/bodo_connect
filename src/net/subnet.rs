@@ -40,7 +40,7 @@ impl Subnet {
     }
 
     pub fn has_host(&self, h: &Host) -> bool {
-        self.hosts.contains(&h)
+        self.hosts.contains(h)
     }
 }
 

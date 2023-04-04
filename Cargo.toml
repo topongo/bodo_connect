@@ -20,15 +20,8 @@ mac_address = { git = "https://github.com/topongo/mac_address", optional = true 
 reqwest = { version = "0.11.16", optional = true }
 clap = { version = "4.2.1", features = ["derive"], optional = true }
 
-[profile.release]
-opt-level = 'z'
-lto = true
-codegen-units = 1
-panic = 'abort'
-strip = true
-
 [features]
-default = ["wake", "cmd", "serde", "wake", "log"]
+default = ["wake", "cmd", "serde", "log"]
 wake = ["dep:mac_address", "dep:reqwest"]
 cmd = ["dep:clap", "dep:home"]
 serde = ["dep:serde", "dep:serde_json"]

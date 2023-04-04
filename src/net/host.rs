@@ -63,7 +63,7 @@ impl Host {
     }
 
     pub fn identity_string(&self) -> String {
-        return format!("{}@{}", self.user, self.ip)
+        format!("{}@{}", self.user, self.ip)
     }
 
     pub fn port_option(&self) -> Option<PortOption> {

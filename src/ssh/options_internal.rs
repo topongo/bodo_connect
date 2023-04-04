@@ -26,24 +26,21 @@ impl SSHOptionStore {
         for o in self.options.values() {
             if o.extended_name() {
                 out.push(format!("--{}", o.name()));
-                match o.value() {
-                    Some(v) => out.push(v),
-                    None => {}
+                if let Some(v) = o.value() {
+                    out.push(v)
                 }
                 coupling = false;
+            } else if coupling {
+                out.last_mut().unwrap().push_str(o.name())
             } else {
-                if coupling {
-                    out.last_mut().unwrap().push_str(&o.name())
-                } else {
-                    out.push(format!("-{}", o.name()));
-                    match o.value() {
-                        Some(v) => {
-                            out.push(v);
-                            coupling = false;
-                        },
-                        None => {
-                            coupling = true;
-                        }
+                out.push(format!("-{}", o.name()));
+                match o.value() {
+                    Some(v) => {
+                        out.push(v);
+                        coupling = false;
+                    },
+                    None => {
+                        coupling = true;
                     }
                 }
             }

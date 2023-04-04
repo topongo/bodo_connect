@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use std::process::exit;
 use futures::executor::block_on;
 

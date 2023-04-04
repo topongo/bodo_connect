@@ -7,6 +7,8 @@ use log::{debug, info};
 #[cfg(not(feature = "log"))]
 use crate::{debug, info};
 use reachable::{IcmpTarget, ResolvePolicy, Status, Target, TcpTarget};
+#[cfg(feature = "wake")]
+use subprocess::ExitStatus;
 
 use crate::ssh::{*, options::*};
 use crate::net::{Host, Subnet};
@@ -24,16 +26,12 @@ fn get_resolve_policy(i: IpAddr) -> ResolvePolicy {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct NetworkMap {
     subnets: HashMap<String, Subnet>
 }
 
 impl NetworkMap {
-    pub fn new() -> NetworkMap {
-        NetworkMap { subnets: HashMap::new() }
-    }
-
     pub fn add_subnet(&mut self, s: Subnet) {
         self.subnets.insert(s.subdomain.clone(), s);
     }
@@ -62,12 +60,7 @@ impl NetworkMap {
                 rp
             ).check_availability()
         } {
-            Ok(r) => {
-                match r {
-                    Status::Available => true,
-                    _ => false
-                }
-            },
+            Ok(r) => matches!(r, Status::Available),
             Err(_) => false
         }
     }
@@ -120,8 +113,6 @@ impl NetworkMap {
             for (s, m) in self.get_masters() {
                 if NetworkMap::is_available(m.ip, Some(m.port)) {
                     return Some(s)
-                } else {
-                    continue
                 }
             }
             None
@@ -149,7 +140,7 @@ impl NetworkMap {
         }
     }
 
-    pub async fn to_ssh(&self, target: &Host, subnet: Option<&Subnet>, command: &mut Vec<String>, eoptions: Option<SSHOptionStore>) -> SSHProcess {
+    pub async fn to_ssh(&self, target: &Host, subnet: Option<&Subnet>, command: &mut Vec<String>, extra_options: Option<SSHOptionStore>) -> SSHProcess {
         debug!("generating target string");
         let target_string = target.identity_string();
         info!("host string genetared: {}", target_string);
@@ -167,7 +158,7 @@ impl NetworkMap {
         }
         info!("ssh options generated: {:?}", options.args_gen());
 
-        if let Some(o) = eoptions {
+        if let Some(o) = extra_options {
             debug!("extra options present, merging");
             options.merge(o);
         }
@@ -236,15 +227,14 @@ impl TryFrom<Vec<Subnet>> for NetworkMap {
     type Error = String;
 
     fn try_from(value: Vec<Subnet>) -> Result<Self, Self::Error> {
-        let mut n = NetworkMap::new();
+        let mut n = NetworkMap::default();
         let mut subs = HashSet::new();
         for s in value.into_iter() {
             if subs.contains(&s.subdomain) {
                 return Err(s.subdomain)
-            } else {
-                subs.insert(s.subdomain.clone());
-                n.add_subnet(s);
             }
+            subs.insert(s.subdomain.clone());
+            n.add_subnet(s);
         }
         Ok(n)
     }

@@ -1,7 +1,9 @@
 use std::fs::read_to_string;
 use std::path::Path;
 #[cfg(feature = "log")]
-use log::{error, LevelFilter, warn};
+use log::{error, warn, LevelFilter};
+#[cfg(feature = "log")]
+use crate::logger::CONSOLE_LOGGER;
 #[cfg(not(feature = "log"))]
 use crate::{error, warn};
 use clap::Parser;
@@ -27,8 +29,10 @@ pub struct Cmd {
     wake: bool,
     #[arg(short, long, help = "Pass -t parameter to ssh (force tty allocation)")]
     tty: bool,
+    #[cfg(feature = "log")]
     #[arg(short, action = clap::ArgAction::Count, help = "Set verbosity level")]
     debug: u8,
+    #[cfg(feature = "log")]
     #[arg(short, long, help = "Don't log anything")]
     quiet: bool,
     #[arg(short = 'n', long, help = "Send to stdout the generated command without executing it")]
@@ -89,7 +93,7 @@ impl RuntimeError {
 impl Cmd {
     fn empty() -> Result<NetworkMap, RuntimeError> {
         warn!("cannot find networkmap in the default location, using a empty networkmap");
-        return Ok(NetworkMap::new())
+        Ok(NetworkMap::default())
     }
 
     pub fn read_nm_from_file(&self) -> Result<NetworkMap, RuntimeError> {
@@ -105,7 +109,7 @@ impl Cmd {
 
             None => {
                 if let Some(home_dir) = home::home_dir() {
-                    let p = home_dir.join(".config/bodo_connect/networkmap.json".to_string()).to_str().unwrap().to_string();
+                    let p = home_dir.join(".config/bodo_connect/networkmap.json").to_str().unwrap().to_string();
                     let path = Path::new(&p);
                     if !path.exists() {
                         return Cmd::empty()
@@ -117,7 +121,7 @@ impl Cmd {
         };
 
         let subnets: Vec<Subnet> = match serde_json::from_str(
-            &*match read_to_string(nm_path.clone()) {
+            &match read_to_string(nm_path.clone()) {
                 Ok(s) => s,
                 Err(e) => return Err(RuntimeError::ReadError(e.to_string(), nm_path))
             }
@@ -135,7 +139,7 @@ impl Cmd {
     pub async fn main(&mut self) -> Result<(), RuntimeError> {
         #[cfg(feature = "log")]
         {
-            log::set_logger(&logger::CONSOLE_LOGGER).unwrap();
+            log::set_logger(&CONSOLE_LOGGER).unwrap();
             log::set_max_level(
                 if self.quiet {
                     LevelFilter::Off
@@ -176,13 +180,13 @@ impl Cmd {
             let mut proc = a_proc.await;
 
             if self.dry {
-                println!("{}", proc.to_string());
+                println!("{}", proc);
                 Ok(())
             } else {
-                eprintln!("{}", proc.to_string());
+                eprintln!("{}", proc);
 
                 loop {
-                    match match proc.run(None) {
+                    if let Some(r) = match proc.run(None) {
                         Ok(e) => match e {
                             ExitStatus::Exited(s) => {
                                 if s == 0 {
@@ -202,8 +206,7 @@ impl Cmd {
                             Some(Err(RuntimeError::SpawnError(proc.to_string(), e.to_string())))
                         }
                     } {
-                        Some(r) => return r,
-                        None => {}
+                        return r;
                     }
                 }
             }
