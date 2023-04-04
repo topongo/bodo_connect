@@ -1,6 +1,6 @@
 pub mod net;
 pub mod ssh;
 pub mod cmd;
-#[cfg(featuer = "wake")]
+#[cfg(feature = "wake")]
 pub mod waker;
 pub mod logger;

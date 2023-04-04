@@ -6,7 +6,7 @@ use serde::Deserialize;
 use crate::ssh::hop::Hop;
 use crate::ssh::options::PortOption;
 use crate::net::Subnet;
-#[cfg(featuer = "wake")]
+#[cfg(feature = "wake")]
 use crate::waker::{Waker};
 
 #[derive(Debug, Deserialize)]
@@ -19,7 +19,7 @@ pub struct Host {
     // if this is not None then the host is a network master
     pub eport: Option<u16>,
     pub user: String,
-    #[cfg(featuer = "wake")]
+    #[cfg(feature = "wake")]
     pub waker: Option<Waker>
 }
 
@@ -31,7 +31,7 @@ impl Host {
         ip: IpAddr,
         port: u16,
         eport: Option<u16>,
-        #[cfg(featuer = "wake")]
+        #[cfg(feature = "wake")]
         waker: Option<Waker>
     ) -> Self {
         Self {
@@ -41,7 +41,7 @@ impl Host {
             port,
             eport,
             user,
-            #[cfg(featuer = "wake")]
+            #[cfg(feature = "wake")]
             waker
         }
     }

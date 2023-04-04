@@ -9,7 +9,7 @@ tokio = "1.27.0"
 reachable = "0.2.2"
 external-ip = "4.2.0"
 futures = "0.3.27"
-log = { version = "0.4.17" }
+log = { version = "0.4.17", optional = true }
 chrono = { version = "0.4.24" }
 colored = { version = "2.0.0", optional = true }
 lazy_static = { version = "1.4.0", optional = true }
@@ -28,7 +28,7 @@ panic = 'abort'
 strip = true
 
 [features]
-default = ["wake", "cmd"]
+default = ["wake", "cmd", "serde", "wake", "log"]
 wake = ["dep:mac_address", "dep:reqwest"]
 cmd = ["dep:clap", "dep:home"]
 serde = ["dep:serde", "dep:serde_json"]

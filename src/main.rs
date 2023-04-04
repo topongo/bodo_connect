@@ -1,7 +1,7 @@
 mod cmd;
 mod net;
 mod logger;
-#[cfg(featuer = "wake")]
+#[cfg(feature = "wake")]
 mod waker;
 mod ssh;
 

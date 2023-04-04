@@ -20,7 +20,7 @@ use crate::ssh::options::GenericOption;
 pub struct Cmd {
     #[arg(long, help = "Select different networkmap.json file")]
     networkmap: Option<String>,
-    #[cfg(featuer = "wake")]
+    #[cfg(feature = "wake")]
     #[arg(short, long, help = "Wake host before connecting")]
     wake: bool,
     #[arg(short, long, help = "Pass -t parameter to ssh (force tty allocation)")]
@@ -160,7 +160,7 @@ impl Cmd {
             let current_subnet = nm.find_current_subnet().await;
             let a_proc = nm.to_ssh(target, current_subnet, &mut self.extra, Some(extra_options));
 
-            #[cfg(featuer = "wake")]
+            #[cfg(feature = "wake")]
             if self.wake {
                 if let Err(s) = nm.wake(target).await {
                     error!("while waking: {}", s);
