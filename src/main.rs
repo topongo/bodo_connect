@@ -1,3 +1,4 @@
+#[cfg(feature = "cmd")]
 mod cmd;
 mod net;
 mod logger;

@@ -2,7 +2,10 @@ use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::time::Duration;
 use external_ip::get_ip;
+#[cfg(feature = "log")]
 use log::{debug, info};
+#[not(cfg(feature = "log"))]
+use crate::{debug, info};
 use reachable::{IcmpTarget, ResolvePolicy, Status, Target, TcpTarget};
 use subprocess::ExitStatus;
 
