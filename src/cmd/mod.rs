@@ -17,9 +17,10 @@ use crate::ssh::options::GenericOption;
     version = env!("CARGO_PKG_VERSION"),
     author = "topongo"
 )]
-pub struct BodoConnect {
+pub struct Cmd {
     #[arg(long, help = "Select different networkmap.json file")]
     networkmap: Option<String>,
+    #[cfg(featuer = "wake")]
     #[arg(short, long, help = "Wake host before connecting")]
     wake: bool,
     #[arg(short, long, help = "Pass -t parameter to ssh (force tty allocation)")]
@@ -43,7 +44,7 @@ pub struct BodoConnect {
     extra: Vec<String>,
 }
 
-pub enum BodoConnectError {
+pub enum RuntimeError {
     NoSuchFile(String),
     ReadError(String, String),
     ParseError(String),
@@ -54,48 +55,48 @@ pub enum BodoConnectError {
     NoSuchHost(String)
 }
 
-impl BodoConnectError {
+impl RuntimeError {
     pub fn print_error(&self) {
         match self {
-            BodoConnectError::NoSuchFile(p) => error!("no such file or directory: {}", p),
-            BodoConnectError::ReadError(f, e) => error!("error reading {}: {}", f, e),
-            BodoConnectError::ParseError(e) => error!("parse error: {}", e),
-            BodoConnectError::DuplicateError(h) => error!("host duplicate: {}", h),
-            BodoConnectError::SSHError(e) => error!("ssh exited with code {}", e),
-            BodoConnectError::SSHUnknownError => error!("unknown ssh error"),
-            BodoConnectError::SpawnError(s, e) => error!("cannot spawn ssh command `{}`: {}", s, e),
-            BodoConnectError::NoSuchHost(h) => error!("no such host: {}", h)
+            RuntimeError::NoSuchFile(p) => error!("no such file or directory: {}", p),
+            RuntimeError::ReadError(f, e) => error!("error reading {}: {}", f, e),
+            RuntimeError::ParseError(e) => error!("parse error: {}", e),
+            RuntimeError::DuplicateError(h) => error!("host duplicate: {}", h),
+            RuntimeError::SSHError(e) => error!("ssh exited with code {}", e),
+            RuntimeError::SSHUnknownError => error!("unknown ssh error"),
+            RuntimeError::SpawnError(s, e) => error!("cannot spawn ssh command `{}`: {}", s, e),
+            RuntimeError::NoSuchHost(h) => error!("no such host: {}", h)
         }
     }
 
     pub fn exit_code(&self) -> i32 {
         match self {
-            BodoConnectError::NoSuchFile(..) => 1,
-            BodoConnectError::ReadError(..) => 3,
-            BodoConnectError::ParseError(..) => 4,
-            BodoConnectError::DuplicateError(..) => 5,
-            BodoConnectError::SSHError(e) => *e,
-            BodoConnectError::NoSuchHost(..) => 7,
-            BodoConnectError::SSHUnknownError => -1,
-            BodoConnectError::SpawnError(..) => -2
+            RuntimeError::NoSuchFile(..) => 1,
+            RuntimeError::ReadError(..) => 3,
+            RuntimeError::ParseError(..) => 4,
+            RuntimeError::DuplicateError(..) => 5,
+            RuntimeError::SSHError(e) => *e,
+            RuntimeError::NoSuchHost(..) => 7,
+            RuntimeError::SSHUnknownError => -1,
+            RuntimeError::SpawnError(..) => -2
         }
     }
 }
 
-impl BodoConnect {
-    fn empty() -> Result<NetworkMap, BodoConnectError> {
+impl Cmd {
+    fn empty() -> Result<NetworkMap, RuntimeError> {
         warn!("cannot find networkmap in the default location, using a empty networkmap");
         return Ok(NetworkMap::new())
     }
 
-    pub fn read_nm_from_file(&self) -> Result<NetworkMap, BodoConnectError> {
+    pub fn read_nm_from_file(&self) -> Result<NetworkMap, RuntimeError> {
         let nm_path = match &self.networkmap {
             Some(p) => {
                 let path = Path::new(p);
                 if path.exists() && (path.is_file() || path.is_symlink()) {
                     p.clone()
                 } else {
-                    return Err(BodoConnectError::NoSuchFile(p.clone()))
+                    return Err(RuntimeError::NoSuchFile(p.clone()))
                 }
             }
 
@@ -104,10 +105,10 @@ impl BodoConnect {
                     let p = home_dir.join(".config/bodoConnect/networkmap.json".to_string()).to_str().unwrap().to_string();
                     let path = Path::new(&p);
                     if !path.exists() {
-                        return BodoConnect::empty()
+                        return Cmd::empty()
                     } else { p }
                 } else {
-                    return BodoConnect::empty()
+                    return Cmd::empty()
                 }
             }
         };
@@ -115,20 +116,20 @@ impl BodoConnect {
         let subnets: Vec<Subnet> = match serde_json::from_str(
             &*match read_to_string(nm_path.clone()) {
                 Ok(s) => s,
-                Err(e) => return Err(BodoConnectError::ReadError(e.to_string(), nm_path))
+                Err(e) => return Err(RuntimeError::ReadError(e.to_string(), nm_path))
             }
         ) {
             Ok(n) => n,
-            Err(e) => return Err(BodoConnectError::ParseError(e.to_string()))
+            Err(e) => return Err(RuntimeError::ParseError(e.to_string()))
         };
 
         match NetworkMap::try_from(subnets) {
             Ok(nm) => Ok(nm),
-            Err(e) => Err(BodoConnectError::DuplicateError(e))
+            Err(e) => Err(RuntimeError::DuplicateError(e))
         }
     }
 
-    pub async fn main(&mut self) -> Result<(), BodoConnectError> {
+    pub async fn main(&mut self) -> Result<(), RuntimeError> {
         log::set_logger(&logger::CONSOLE_LOGGER).unwrap();
         log::set_max_level(
             if self.quiet {
@@ -159,6 +160,7 @@ impl BodoConnect {
             let current_subnet = nm.find_current_subnet().await;
             let a_proc = nm.to_ssh(target, current_subnet, &mut self.extra, Some(extra_options));
 
+            #[cfg(featuer = "wake")]
             if self.wake {
                 if let Err(s) = nm.wake(target).await {
                     error!("while waking: {}", s);
@@ -183,15 +185,15 @@ impl BodoConnect {
                                     warn!("ssh exited with {}", s);
                                     None
                                 } else {
-                                    Some(Err(BodoConnectError::SSHError(s as i32)))
+                                    Some(Err(RuntimeError::SSHError(s as i32)))
                                 }
                             }
                             _ => {
-                                Some(Err(BodoConnectError::SSHUnknownError))
+                                Some(Err(RuntimeError::SSHUnknownError))
                             }
                         }
                         Err(e) => {
-                            Some(Err(BodoConnectError::SpawnError(proc.to_string(), e.to_string())))
+                            Some(Err(RuntimeError::SpawnError(proc.to_string(), e.to_string())))
                         }
                     } {
                         Some(r) => return r,
@@ -200,7 +202,7 @@ impl BodoConnect {
                 }
             }
         } else {
-            Err(BodoConnectError::NoSuchHost(self.host.clone()))
+            Err(RuntimeError::NoSuchHost(self.host.clone()))
         }
     }
 }

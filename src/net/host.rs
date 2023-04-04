@@ -6,6 +6,7 @@ use serde::Deserialize;
 use crate::ssh::hop::Hop;
 use crate::ssh::options::PortOption;
 use crate::net::Subnet;
+#[cfg(featuer = "wake")]
 use crate::waker::{Waker};
 
 #[derive(Debug, Deserialize)]
@@ -18,6 +19,7 @@ pub struct Host {
     // if this is not None then the host is a network master
     pub eport: Option<u16>,
     pub user: String,
+    #[cfg(featuer = "wake")]
     pub waker: Option<Waker>
 }
 
@@ -29,9 +31,19 @@ impl Host {
         ip: IpAddr,
         port: u16,
         eport: Option<u16>,
+        #[cfg(featuer = "wake")]
         waker: Option<Waker>
-    ) -> Host {
-        Host { name, uuid, ip, port, eport, user, waker }
+    ) -> Self {
+        Self {
+            name,
+            uuid,
+            ip,
+            port,
+            eport,
+            user,
+            #[cfg(featuer = "wake")]
+            waker
+        }
     }
 
     pub fn is_master(&self) -> bool {

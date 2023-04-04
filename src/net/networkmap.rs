@@ -8,6 +8,7 @@ use subprocess::ExitStatus;
 
 use crate::ssh::{*, options::*};
 use crate::net::{Host, Subnet};
+#[cfg(featuer = "wake")]
 use crate::waker::Waker;
 
 
@@ -177,6 +178,7 @@ impl NetworkMap {
         SSHProcess::new(output)
     }
 
+    #[cfg(featuer = "wake")]
     pub async fn wake(&self, target: &Host) -> Result<(), String> {
         match &target.waker {
             None => {

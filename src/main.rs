@@ -1,24 +1,19 @@
-// #![feature(future_join)]
-extern crate core;
-
-mod ssh;
-mod waker;
+mod cmd;
 mod net;
-mod bodo_connect;
 mod logger;
+#[cfg(featuer = "wake")]
+mod waker;
+mod ssh;
 
-use clap::Parser;
-use futures::executor::block_on;
 use std::process::exit;
-
-use crate::bodo_connect::BodoConnect;
-
+use futures::executor::block_on;
+use clap::Parser;
 
 #[tokio::main]
 async fn main() {
-    let mut bc: BodoConnect = bodo_connect::BodoConnect::parse();
+    let mut cmd = cmd::Cmd::parse();
 
-    exit(match block_on(bc.main()) {
+    exit(match block_on(cmd.main()) {
         Ok(..) => 0,
         Err(e) => {
             e.print_error();
