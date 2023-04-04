@@ -52,14 +52,15 @@ Options:
 A little clarification on how a networkmap is structured:
 
 * `NetworkMap`: a list of `Subnets`
-* `Subnet`: defined (at least) by its subdomain and a list of hosts (and optionally by a static ip address).
+* `Subnet`: 
+    * An physical/abstract local network. It is identified by its `subdomain` and it contains a list of `hosts` (and optionally by a static external ip address, `eip`).
 * `Host`:
     * Identified by its `name`, that must be unique in the whole network map, it must contain:
         * An `ip` address
         * A `port`
         * A `user`
     * It can contain also an `eport`.
-        * If set, then the host it becomes the subnet `master`, so it is considered to be always powered on and exposed for incoming ssh connection from foreign hosts
+        * If set, the host becomes the subnet `master`, so it is considered to be always powered on and exposed for incoming ssh connection from foreign hosts
         * There can only be one master host per subnet
 * `Waker`: an optional structure that defines how a host can be wakened. It supports:
     * http(s):
