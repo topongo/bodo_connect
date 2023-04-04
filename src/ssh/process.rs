@@ -1,22 +1,20 @@
 #![allow(dead_code)]
 
-use std::fmt::{Display, Formatter};
-#[cfg(feature = "log")]
-use log::debug;
 #[cfg(not(feature = "log"))]
 use crate::debug;
+#[cfg(feature = "log")]
+use log::debug;
+use std::fmt::{Display, Formatter};
 
 use subprocess::{ExitStatus, Popen, PopenConfig, PopenError, Redirection};
 
 pub struct SSHProcess {
-    args: Vec<String>
+    args: Vec<String>,
 }
 
 impl SSHProcess {
     pub fn new(args: Vec<String>) -> SSHProcess {
-        SSHProcess {
-            args
-        }
+        SSHProcess { args }
     }
 
     pub fn get_args(&self) -> &Vec<String> {
@@ -25,15 +23,18 @@ impl SSHProcess {
 
     pub fn run(&mut self, opts: Option<PopenConfig>) -> Result<ExitStatus, PopenError> {
         debug!("spawning new ssh process");
-        match Popen::create(&self.args, match opts {
-            Some(x) => x,
-            None => PopenConfig::default()
-        }) {
+        match Popen::create(
+            &self.args,
+            match opts {
+                Some(x) => x,
+                None => PopenConfig::default(),
+            },
+        ) {
             Ok(mut p) => {
                 debug!("waiting for ssh process to exit");
                 p.wait()
-            },
-            Err(e) => Err(e)
+            }
+            Err(e) => Err(e),
         }
     }
 
@@ -46,7 +47,10 @@ impl SSHProcess {
 
     pub fn run_stdout_to_stderr(&mut self) -> Result<ExitStatus, PopenError> {
         debug!("passing redirecting options to ssh process");
-        self.run(Some(PopenConfig { stdout: Redirection::Merge, ..PopenConfig::default() }))
+        self.run(Some(PopenConfig {
+            stdout: Redirection::Merge,
+            ..PopenConfig::default()
+        }))
     }
 }
 

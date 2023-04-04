@@ -1,9 +1,9 @@
 #[cfg(feature = "log")]
 mod inner {
+    use colored::Colorize;
+    use log::{Level, Metadata, Record};
     use std::collections::HashMap;
     use std::string::ToString;
-    use log::{Level, Metadata, Record};
-    use colored::Colorize;
 
     lazy_static::lazy_static! {
         pub static ref LOGGER_COLORS: HashMap<Level, String> =  HashMap::from([
@@ -14,7 +14,6 @@ mod inner {
         ]);
     }
 
-
     pub static CONSOLE_LOGGER: ConsoleLogger = ConsoleLogger;
     pub struct ConsoleLogger;
 
@@ -24,15 +23,21 @@ mod inner {
         }
 
         fn log(&self, record: &Record) {
-            if self.enabled(record.metadata()) && record.module_path().unwrap_or("").starts_with("bodo_connect::") {
+            if self.enabled(record.metadata())
+                && record
+                    .module_path()
+                    .unwrap_or("")
+                    .starts_with("bodo_connect::")
+            {
                 let level = format!("{:>7}", record.level());
                 eprintln!(
                     "{}: {}",
                     match LOGGER_COLORS.get(&record.level()) {
                         Some(c) => level.color(&**c).to_string(),
-                        None => level
+                        None => level,
                     },
-                    record.args())
+                    record.args()
+                )
             }
         }
 

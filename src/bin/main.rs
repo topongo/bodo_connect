@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
-use std::process::exit;
 use futures::executor::block_on;
+use std::process::exit;
 
 use bodo_connect::cmd;
 use clap::Parser;
@@ -16,4 +16,3 @@ async fn main() {
         }
     })
 }
-

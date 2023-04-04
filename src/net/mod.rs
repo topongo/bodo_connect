@@ -1,7 +1,7 @@
-pub mod networkmap;
 pub mod host;
+pub mod networkmap;
 pub mod subnet;
 
-pub use networkmap::NetworkMap;
 pub use host::Host;
+pub use networkmap::NetworkMap;
 pub use subnet::Subnet;

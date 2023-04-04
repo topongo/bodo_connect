@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-use std::fmt::{Debug, Formatter};
-use std::net::IpAddr;
 #[cfg(feature = "serde")]
 use serde::Deserialize;
+use std::fmt::{Debug, Formatter};
+use std::net::IpAddr;
 
 use crate::net::Host;
 
@@ -12,12 +12,16 @@ pub struct Subnet {
     // identity
     pub subdomain: String,
     hosts: Vec<Host>,
-    pub eip: Option<IpAddr>
+    pub eip: Option<IpAddr>,
 }
 
 impl Subnet {
     pub fn new(subdomain: String, eip: Option<IpAddr>) -> Subnet {
-        Subnet { subdomain, eip, hosts: Vec::new() }
+        Subnet {
+            subdomain,
+            eip,
+            hosts: Vec::new(),
+        }
     }
 
     pub fn add_host(&mut self, h: Host) {
@@ -35,7 +39,7 @@ impl Subnet {
     pub fn get_master(&self) -> &Host {
         match self.hosts.iter().find(|h| h.is_master()) {
             Some(h) => h,
-            None => panic!("subnet {} has no master", self.subdomain)
+            None => panic!("subnet {} has no master", self.subdomain),
         }
     }
 
@@ -46,7 +50,13 @@ impl Subnet {
 
 impl Debug for Subnet {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Subnet {{ subdomain: \"{}\", eip: {:?}, hosts: {} }}", self.subdomain, self.eip, self.hosts.len())
+        write!(
+            f,
+            "Subnet {{ subdomain: \"{}\", eip: {:?}, hosts: {} }}",
+            self.subdomain,
+            self.eip,
+            self.hosts.len()
+        )
     }
 }
 

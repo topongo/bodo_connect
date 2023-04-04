@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 pub struct Hop {
     user: String,
     host: String,
-    port: u16
+    port: u16,
 }
 
 impl Hop {

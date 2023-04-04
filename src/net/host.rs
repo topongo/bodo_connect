@@ -1,28 +1,28 @@
 #![allow(dead_code)]
 
-use std::net::IpAddr;
 #[cfg(feature = "serde")]
 use serde::Deserialize;
+use std::net::IpAddr;
 
+use crate::net::Subnet;
 use crate::ssh::hop::Hop;
 use crate::ssh::options::PortOption;
-use crate::net::Subnet;
 #[cfg(feature = "wake")]
-use crate::waker::{Waker};
+use crate::waker::Waker;
 
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[derive(Debug)]
 pub struct Host {
     // identity
     pub name: String,
-    uuid: String,        // [WIP]
+    uuid: String, // [WIP]
     pub ip: IpAddr,
     pub port: u16,
     // if this is not None then the host is a network master
     pub eport: Option<u16>,
     pub user: String,
     #[cfg(feature = "wake")]
-    pub waker: Option<Waker>
+    pub waker: Option<Waker>,
 }
 
 impl Host {
@@ -33,8 +33,7 @@ impl Host {
         ip: IpAddr,
         port: u16,
         eport: Option<u16>,
-        #[cfg(feature = "wake")]
-        waker: Option<Waker>
+        #[cfg(feature = "wake")] waker: Option<Waker>,
     ) -> Self {
         Self {
             name,
@@ -44,7 +43,7 @@ impl Host {
             eport,
             user,
             #[cfg(feature = "wake")]
-            waker
+            waker,
         }
     }
 
@@ -56,9 +55,9 @@ impl Host {
         match subnet {
             Some(s) => match self.eport {
                 Some(p) => Hop::new(self.user.clone(), s.subdomain.clone(), p),
-                None => panic!("cannot generate external hop for non-master hosts")
-            }
-            None => Hop::new(self.user.clone(), self.ip.to_string(), self.port)
+                None => panic!("cannot generate external hop for non-master hosts"),
+            },
+            None => Hop::new(self.user.clone(), self.ip.to_string(), self.port),
         }
     }
 

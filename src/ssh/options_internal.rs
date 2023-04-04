@@ -12,12 +12,14 @@ pub trait SSHOption {
 
 #[derive(Default)]
 pub struct SSHOptionStore {
-    options: HashMap<&'static str, Box<dyn SSHOption>>
+    options: HashMap<&'static str, Box<dyn SSHOption>>,
 }
 
 impl SSHOptionStore {
     pub fn new() -> Self {
-        Self { options: HashMap::new() }
+        Self {
+            options: HashMap::new(),
+        }
     }
 
     pub fn args_gen(&self) -> Vec<String> {
@@ -38,7 +40,7 @@ impl SSHOptionStore {
                     Some(v) => {
                         out.push(v);
                         coupling = false;
-                    },
+                    }
                     None => {
                         coupling = true;
                     }
@@ -61,13 +63,17 @@ impl SSHOptionStore {
 }
 
 pub struct JumpHosts {
-    hops: Vec<Hop>
+    hops: Vec<Hop>,
 }
 
 impl JumpHosts {
-    pub fn new(hosts: Vec<Hop>) -> JumpHosts { JumpHosts { hops: hosts } }
+    pub fn new(hosts: Vec<Hop>) -> JumpHosts {
+        JumpHosts { hops: hosts }
+    }
 
-    pub fn add_host(&mut self, h: Hop) { self.hops.push(h) }
+    pub fn add_host(&mut self, h: Hop) {
+        self.hops.push(h)
+    }
 }
 
 impl SSHOption for JumpHosts {
@@ -80,20 +86,19 @@ impl SSHOption for JumpHosts {
     }
 
     fn value(&self) -> Option<String> {
-        Some(self.hops
-            .iter()
-            .map(|h| {
-                h.to_string()
-            })
-            .collect::<Vec<String>>()
-            .join(".")
+        Some(
+            self.hops
+                .iter()
+                .map(|h| h.to_string())
+                .collect::<Vec<String>>()
+                .join("."),
         )
     }
 }
 
 pub enum GenericOption {
     Switch(&'static str),
-    Value(&'static str, String)
+    Value(&'static str, String),
 }
 
 impl SSHOption for GenericOption {
@@ -104,25 +109,27 @@ impl SSHOption for GenericOption {
     fn name(&self) -> &'static str {
         match self {
             Self::Switch(s) => s,
-            Self::Value(s, _) => s
+            Self::Value(s, _) => s,
         }
     }
 
     fn value(&self) -> Option<String> {
         match self {
             Self::Switch(_) => None,
-            Self::Value(_, s) => Some(s.clone())
+            Self::Value(_, s) => Some(s.clone()),
         }
     }
 }
 
 #[derive(Debug)]
 pub struct PortOption {
-    port: u16
+    port: u16,
 }
 
 impl PortOption {
-    pub fn new(port: u16) -> Self { Self { port } }
+    pub fn new(port: u16) -> Self {
+        Self { port }
+    }
 }
 
 impl SSHOption for PortOption {

@@ -1,18 +1,17 @@
-use std::fs::read_to_string;
-use std::path::Path;
-#[cfg(feature = "log")]
-use log::{error, warn, LevelFilter};
 #[cfg(feature = "log")]
 use crate::logger::CONSOLE_LOGGER;
 #[cfg(not(feature = "log"))]
 use crate::{error, warn};
 use clap::Parser;
+#[cfg(feature = "log")]
+use log::{error, warn, LevelFilter};
+use std::fs::read_to_string;
+use std::path::Path;
 use subprocess::ExitStatus;
 
 use crate::net::*;
-use crate::ssh::SSHOptionStore;
 use crate::ssh::options::GenericOption;
-
+use crate::ssh::SSHOptionStore;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -35,7 +34,11 @@ pub struct Cmd {
     #[cfg(feature = "log")]
     #[arg(short, long, help = "Don't log anything")]
     quiet: bool,
-    #[arg(short = 'n', long, help = "Send to stdout the generated command without executing it")]
+    #[arg(
+        short = 'n',
+        long,
+        help = "Send to stdout the generated command without executing it"
+    )]
     dry: bool,
     #[arg(short = 'R', long, help = "[WIP] Creates rsync commands")]
     rsync: bool,
@@ -45,8 +48,10 @@ pub struct Cmd {
     loop_: bool,
     #[arg(help = "Host to connect to")]
     host: String,
-    #[clap(trailing_var_arg=true)]
-    #[arg(help = "Extra argument(s), if no -S or -R is used, it will be passed to the remote machine as command")]
+    #[clap(trailing_var_arg = true)]
+    #[arg(
+        help = "Extra argument(s), if no -S or -R is used, it will be passed to the remote machine as command"
+    )]
     extra: Vec<String>,
 }
 
@@ -58,7 +63,7 @@ pub enum RuntimeError {
     SSHError(i32),
     SSHUnknownError,
     SpawnError(String, String),
-    NoSuchHost(String)
+    NoSuchHost(String),
 }
 
 impl RuntimeError {
@@ -72,7 +77,7 @@ impl RuntimeError {
             RuntimeError::SSHError(e) => error!("ssh exited with code {}", e),
             RuntimeError::SSHUnknownError => error!("unknown ssh error"),
             RuntimeError::SpawnError(s, e) => error!("cannot spawn ssh command `{}`: {}", s, e),
-            RuntimeError::NoSuchHost(h) => error!("no such host: {}", h)
+            RuntimeError::NoSuchHost(h) => error!("no such host: {}", h),
         }
     }
 
@@ -85,7 +90,7 @@ impl RuntimeError {
             RuntimeError::SSHError(e) => *e,
             RuntimeError::NoSuchHost(..) => 7,
             RuntimeError::SSHUnknownError => -1,
-            RuntimeError::SpawnError(..) => -2
+            RuntimeError::SpawnError(..) => -2,
         }
     }
 }
@@ -103,36 +108,41 @@ impl Cmd {
                 if path.exists() && (path.is_file() || path.is_symlink()) {
                     p.clone()
                 } else {
-                    return Err(RuntimeError::NoSuchFile(p.clone()))
+                    return Err(RuntimeError::NoSuchFile(p.clone()));
                 }
             }
 
             None => {
                 if let Some(home_dir) = home::home_dir() {
-                    let p = home_dir.join(".config/bodo_connect/networkmap.json").to_str().unwrap().to_string();
+                    let p = home_dir
+                        .join(".config/bodo_connect/networkmap.json")
+                        .to_str()
+                        .unwrap()
+                        .to_string();
                     let path = Path::new(&p);
                     if !path.exists() {
-                        return Cmd::empty()
-                    } else { p }
+                        return Cmd::empty();
+                    } else {
+                        p
+                    }
                 } else {
-                    return Cmd::empty()
+                    return Cmd::empty();
                 }
             }
         };
 
-        let subnets: Vec<Subnet> = match serde_json::from_str(
-            &match read_to_string(nm_path.clone()) {
+        let subnets: Vec<Subnet> =
+            match serde_json::from_str(&match read_to_string(nm_path.clone()) {
                 Ok(s) => s,
-                Err(e) => return Err(RuntimeError::ReadError(e.to_string(), nm_path))
-            }
-        ) {
-            Ok(n) => n,
-            Err(e) => return Err(RuntimeError::ParseError(e.to_string()))
-        };
+                Err(e) => return Err(RuntimeError::ReadError(e.to_string(), nm_path)),
+            }) {
+                Ok(n) => n,
+                Err(e) => return Err(RuntimeError::ParseError(e.to_string())),
+            };
 
         match NetworkMap::try_from(subnets) {
             Ok(nm) => Ok(nm),
-            Err(e) => Err(RuntimeError::DuplicateError(e))
+            Err(e) => Err(RuntimeError::DuplicateError(e)),
         }
     }
 
@@ -140,22 +150,20 @@ impl Cmd {
         #[cfg(feature = "log")]
         {
             log::set_logger(&CONSOLE_LOGGER).unwrap();
-            log::set_max_level(
-                if self.quiet {
-                    LevelFilter::Off
-                } else {
-                    match self.debug {
-                        v if v >= 2 => LevelFilter::Debug,
-                        1 => LevelFilter::Info,
-                        _ => LevelFilter::Warn
-                    }
+            log::set_max_level(if self.quiet {
+                LevelFilter::Off
+            } else {
+                match self.debug {
+                    v if v >= 2 => LevelFilter::Debug,
+                    1 => LevelFilter::Info,
+                    _ => LevelFilter::Warn,
                 }
-            );
+            });
         }
 
         let nm = match self.read_nm_from_file() {
             Ok(n) => n,
-            Err(e) => return Err(e)
+            Err(e) => return Err(e),
         };
 
         // self.static_testing().await
@@ -198,13 +206,12 @@ impl Cmd {
                                     Some(Err(RuntimeError::SSHError(s as i32)))
                                 }
                             }
-                            _ => {
-                                Some(Err(RuntimeError::SSHUnknownError))
-                            }
-                        }
-                        Err(e) => {
-                            Some(Err(RuntimeError::SpawnError(proc.to_string(), e.to_string())))
-                        }
+                            _ => Some(Err(RuntimeError::SSHUnknownError)),
+                        },
+                        Err(e) => Some(Err(RuntimeError::SpawnError(
+                            proc.to_string(),
+                            e.to_string(),
+                        ))),
                     } {
                         return r;
                     }
