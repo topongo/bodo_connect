@@ -13,7 +13,7 @@ Or build it simply by cloning this repo using cargo:
 ```shell
 git clone https://github.com/topongo/bodo_connect-rs bodo_connect
 cd bodo_connect
-cargo --release build
+cargo build --release
 target/release/bodoConnect
 ```
 
