@@ -2,7 +2,7 @@
 
 #[cfg(feature = "log")]
 use log::debug;
-#[not(cfg(feature = "log"))]
+#[cfg(not(feature = "log"))]
 use crate::debug;
 
 use subprocess::{ExitStatus, Popen, PopenConfig, PopenError, Redirection};

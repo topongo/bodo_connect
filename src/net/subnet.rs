@@ -2,11 +2,12 @@
 
 use std::fmt::{Debug, Formatter};
 use std::net::IpAddr;
+#[cfg(feature = "serde")]
 use serde::Deserialize;
 
 use crate::net::Host;
 
-#[derive(Deserialize)]
+#[cfg_attr(feature = "serde", derive(Deserialize))]
 pub struct Subnet {
     // identity
     pub subdomain: String,

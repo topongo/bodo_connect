@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::net::IpAddr;
+#[cfg(feature = "serde")]
 use serde::Deserialize;
 
 use crate::ssh::hop::Hop;
@@ -9,7 +10,8 @@ use crate::net::Subnet;
 #[cfg(feature = "wake")]
 use crate::waker::{Waker};
 
-#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[derive(Debug)]
 pub struct Host {
     // identity
     pub name: String,

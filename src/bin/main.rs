@@ -1,19 +1,12 @@
-#[cfg(feature = "cmd")]
-mod cmd;
-mod net;
-mod logger;
-#[cfg(feature = "wake")]
-mod waker;
-mod ssh;
-
 use std::process::exit;
 use futures::executor::block_on;
+
+use bodo_connect::cmd;
 use clap::Parser;
 
 #[tokio::main]
 async fn main() {
     let mut cmd = cmd::Cmd::parse();
-
     exit(match block_on(cmd.main()) {
         Ok(..) => 0,
         Err(e) => {

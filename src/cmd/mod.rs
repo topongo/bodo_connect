@@ -1,18 +1,20 @@
 use std::fs::read_to_string;
 use std::path::Path;
+#[cfg(feature = "log")]
 use log::{error, LevelFilter, warn};
+#[cfg(not(feature = "log"))]
+use crate::{error, warn};
 use clap::Parser;
 use subprocess::ExitStatus;
 
 use crate::net::*;
-use crate::logger;
 use crate::ssh::SSHOptionStore;
 use crate::ssh::options::GenericOption;
 
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "bodoConnect",
+    name = "bodo_connect",
     about = "create ssh command on the fly no matter in which network you are",
     version = env!("CARGO_PKG_VERSION"),
     author = "topongo"
@@ -56,6 +58,7 @@ pub enum RuntimeError {
 }
 
 impl RuntimeError {
+    #[cfg_attr(not(feature = "log"), allow(unused_variables))]
     pub fn print_error(&self) {
         match self {
             RuntimeError::NoSuchFile(p) => error!("no such file or directory: {}", p),
@@ -102,7 +105,7 @@ impl Cmd {
 
             None => {
                 if let Some(home_dir) = home::home_dir() {
-                    let p = home_dir.join(".config/bodoConnect/networkmap.json".to_string()).to_str().unwrap().to_string();
+                    let p = home_dir.join(".config/bodo_connect/networkmap.json".to_string()).to_str().unwrap().to_string();
                     let path = Path::new(&p);
                     if !path.exists() {
                         return Cmd::empty()
@@ -130,18 +133,21 @@ impl Cmd {
     }
 
     pub async fn main(&mut self) -> Result<(), RuntimeError> {
-        log::set_logger(&logger::CONSOLE_LOGGER).unwrap();
-        log::set_max_level(
-            if self.quiet {
-                LevelFilter::Off
-            } else {
-                match self.debug {
-                    v if v >= 2 => LevelFilter::Debug,
-                    1 => LevelFilter::Info,
-                    _ => LevelFilter::Warn
+        #[cfg(feature = "log")]
+        {
+            log::set_logger(&logger::CONSOLE_LOGGER).unwrap();
+            log::set_max_level(
+                if self.quiet {
+                    LevelFilter::Off
+                } else {
+                    match self.debug {
+                        v if v >= 2 => LevelFilter::Debug,
+                        1 => LevelFilter::Info,
+                        _ => LevelFilter::Warn
+                    }
                 }
-            }
-        );
+            );
+        }
 
         let nm = match self.read_nm_from_file() {
             Ok(n) => n,

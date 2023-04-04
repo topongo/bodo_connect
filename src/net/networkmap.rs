@@ -4,10 +4,9 @@ use std::time::Duration;
 use external_ip::get_ip;
 #[cfg(feature = "log")]
 use log::{debug, info};
-#[not(cfg(feature = "log"))]
+#[cfg(not(feature = "log"))]
 use crate::{debug, info};
 use reachable::{IcmpTarget, ResolvePolicy, Status, Target, TcpTarget};
-use subprocess::ExitStatus;
 
 use crate::ssh::{*, options::*};
 use crate::net::{Host, Subnet};

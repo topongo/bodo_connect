@@ -24,7 +24,7 @@ mod inner {
         }
 
         fn log(&self, record: &Record) {
-            if self.enabled(record.metadata()) && record.module_path().unwrap_or("").starts_with("bodoConnect::") {
+            if self.enabled(record.metadata()) && record.module_path().unwrap_or("").starts_with("bodo_connect::") {
                 let level = format!("{:>7}", record.level());
                 eprintln!(
                     "{}: {}",
@@ -41,7 +41,7 @@ mod inner {
 }
 
 #[cfg(feature = "log")]
-pub use inner::ConsoleLogger;
+pub use inner::{ConsoleLogger, CONSOLE_LOGGER};
 
-#[not(cfg(feature = "log"))]
+#[cfg(not(feature = "log"))]
 mod dummy;

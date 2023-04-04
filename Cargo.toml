@@ -1,5 +1,5 @@
 [package]
-name = "bodoConnect"
+name = "bodo_connect"
 version = "0.6.0"
 edition = "2021"
 
@@ -33,3 +33,8 @@ wake = ["dep:mac_address", "dep:reqwest"]
 cmd = ["dep:clap", "dep:home"]
 serde = ["dep:serde", "dep:serde_json"]
 log = ["dep:log", "dep:lazy_static", "dep:colored"]
+
+[[bin]]
+name = "bodoConnect"
+required-features = ["cmd", "serde"]
+path = "src/bin/main.rs"
