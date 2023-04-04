@@ -1,0 +1,13 @@
+[package]
+name = "bodoConnect"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+subprocess = "0.2.9"
+tokio = "1.27.0"
+reachable = "0.2.2"
+external-ip = "4.2.0"
+futures = "0.3.27"
