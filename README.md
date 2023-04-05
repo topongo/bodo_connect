@@ -11,7 +11,7 @@ It supports:
 Install it with `cargo install bodo_connect`.
 Or build it simply by cloning this repo using cargo:
 ```shell
-git clone https://github.com/topongo/bodo_connect-rs bodo_connect
+git clone https://github.com/topongo/bodo_connect
 cd bodo_connect
 cargo build --release
 target/release/bodoConnect
