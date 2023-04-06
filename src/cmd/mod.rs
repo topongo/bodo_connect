@@ -7,11 +7,13 @@ use clap::Parser;
 use log::{error, warn, LevelFilter};
 use std::fs::read_to_string;
 use std::path::Path;
+use log::debug;
 use subprocess::ExitStatus;
 
 use crate::net::*;
 use crate::ssh::options::GenericOption;
 use crate::ssh::SSHOptionStore;
+
 
 #[derive(Parser, Debug)]
 #[command(
@@ -48,11 +50,12 @@ pub struct Cmd {
     loop_: bool,
     #[arg(help = "Host to connect to")]
     host: String,
-    #[clap(trailing_var_arg = true)]
     #[arg(
-        help = "Extra argument(s), if no -S or -R is used, it will be passed to the remote machine as command"
+        help = "Extra argument(s), if no -S or -R is used, it will be passed to the remote machine as command",
+        allow_hyphen_values = true,
+        trailing_var_arg = true,
     )]
-    extra: Vec<String>,
+    extra: Vec<String>
 }
 
 pub enum RuntimeError {
@@ -166,13 +169,26 @@ impl Cmd {
             Err(e) => return Err(e),
         };
 
-        // self.static_testing().await
-
         if let Some(target) = nm.get_host(&self.host) {
             let mut extra_options = SSHOptionStore::new();
 
             if self.tty {
                 extra_options.add_option(Box::new(GenericOption::Switch("-t")))
+            }
+
+            debug!("extra arguments: {:?}", self.extra);
+
+            if self.rsync {
+                debug!("popping elements concerning user and host...");
+                if let Some((index, _)) = self.extra
+                    .iter()
+                    .enumerate()
+                    .find(|(_, el)| *el == "-l") {
+
+                    for _ in 0..3 {
+                        debug!("\tpopping: {}", self.extra.remove(index));
+                    }
+                }
             }
 
             let current_subnet = nm.find_current_subnet().await;
