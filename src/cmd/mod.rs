@@ -1,13 +1,12 @@
 #[cfg(feature = "log")]
 use crate::logger::CONSOLE_LOGGER;
 #[cfg(not(feature = "log"))]
-use crate::{error, warn};
+use crate::{error, warn, info, debug};
 use clap::Parser;
 #[cfg(feature = "log")]
-use log::{error, warn, LevelFilter};
+use log::{error, warn, info, debug, LevelFilter};
 use std::fs::read_to_string;
 use std::path::Path;
-use log::debug;
 use subprocess::ExitStatus;
 
 use crate::net::*;
@@ -116,9 +115,10 @@ impl Cmd {
             }
 
             None => {
+                info!("networkmap not specified, using the default location");
                 if let Some(home_dir) = home::home_dir() {
                     let p = home_dir
-                        .join(".config/bodo_connect/networkmap.json")
+                        .join(".config/bodoConnect/networkmap.json")
                         .to_str()
                         .unwrap()
                         .to_string();
@@ -129,10 +129,13 @@ impl Cmd {
                         p
                     }
                 } else {
+                    error!("cannot get user's home directory");
                     return Cmd::empty();
                 }
             }
         };
+
+        debug!("using networkmap file: {}", nm_path);
 
         let subnets: Vec<Subnet> =
             match serde_json::from_str(&match read_to_string(nm_path.clone()) {
@@ -186,7 +189,13 @@ impl Cmd {
                     .find(|(_, el)| *el == "-l") {
 
                     for _ in 0..3 {
-                        debug!("\tpopping: {}", self.extra.remove(index));
+                        #[cfg(feature = "log")]
+                        {
+                            let popped = self.extra.remove(index);
+                            debug!("\tpopping: {}", popped);
+                        }
+                        #[cfg(not(feature = "log"))]
+                        self.extra.remove(index);
                     }
                 }
             }

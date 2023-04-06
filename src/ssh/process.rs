@@ -32,6 +32,17 @@ impl SSHProcess {
         ) {
             Ok(mut p) => {
                 debug!("waiting for ssh process to exit");
+
+                #[cfg(feature = "log")]
+                {
+                    let o = p.wait();
+                    match &o {
+                        Ok(e) => debug!("ssh process exited successfully with {:?}", e),
+                        Err(e) => debug!("ssh process failed with {:?}", e)
+                    }
+                    o
+                }
+                #[cfg(not(feature = "log"))]
                 p.wait()
             }
             Err(e) => Err(e),
