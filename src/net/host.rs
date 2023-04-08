@@ -15,7 +15,6 @@ use crate::waker::Waker;
 pub struct Host {
     // identity
     pub name: String,
-    uuid: String, // [WIP]
     pub ip: IpAddr,
     pub port: u16,
     // if this is not None then the host is a network master
@@ -28,7 +27,6 @@ pub struct Host {
 impl Host {
     pub fn new(
         name: String,
-        uuid: String,
         user: String,
         ip: IpAddr,
         port: u16,
@@ -37,7 +35,6 @@ impl Host {
     ) -> Self {
         Self {
             name,
-            uuid,
             ip,
             port,
             eport,

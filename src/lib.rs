@@ -1,3 +1,5 @@
+extern crate core;
+
 #[cfg(feature = "cmd")]
 pub mod cmd;
 pub mod logger;

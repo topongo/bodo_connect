@@ -1,12 +1,13 @@
+mod runtime_error;
+pub use runtime_error::RuntimeError;
+
 #[cfg(feature = "log")]
 use crate::logger::CONSOLE_LOGGER;
 #[cfg(not(feature = "log"))]
 use crate::{error, warn, info, debug};
-use clap::Parser;
 #[cfg(feature = "log")]
 use log::{error, warn, info, debug, LevelFilter};
-use std::fs::read_to_string;
-use std::path::Path;
+use clap::Parser;
 use subprocess::ExitStatus;
 
 use crate::net::*;
@@ -57,46 +58,6 @@ pub struct Cmd {
     extra: Vec<String>
 }
 
-pub enum RuntimeError {
-    NoSuchFile(String),
-    ReadError(String, String),
-    ParseError(String),
-    DuplicateError(String),
-    SSHError(i32),
-    SSHUnknownError,
-    SpawnError(String, String),
-    NoSuchHost(String),
-}
-
-impl RuntimeError {
-    #[cfg_attr(not(feature = "log"), allow(unused_variables))]
-    pub fn print_error(&self) {
-        match self {
-            RuntimeError::NoSuchFile(p) => error!("no such file or directory: {}", p),
-            RuntimeError::ReadError(f, e) => error!("error reading {}: {}", f, e),
-            RuntimeError::ParseError(e) => error!("parse error: {}", e),
-            RuntimeError::DuplicateError(h) => error!("host duplicate: {}", h),
-            RuntimeError::SSHError(e) => error!("ssh exited with code {}", e),
-            RuntimeError::SSHUnknownError => error!("unknown ssh error"),
-            RuntimeError::SpawnError(s, e) => error!("cannot spawn ssh command `{}`: {}", s, e),
-            RuntimeError::NoSuchHost(h) => error!("no such host: {}", h),
-        }
-    }
-
-    pub fn exit_code(&self) -> i32 {
-        match self {
-            RuntimeError::NoSuchFile(..) => 1,
-            RuntimeError::ReadError(..) => 3,
-            RuntimeError::ParseError(..) => 4,
-            RuntimeError::DuplicateError(..) => 5,
-            RuntimeError::SSHError(e) => *e,
-            RuntimeError::NoSuchHost(..) => 7,
-            RuntimeError::SSHUnknownError => -1,
-            RuntimeError::SpawnError(..) => -2,
-        }
-    }
-}
-
 impl Cmd {
     fn empty() -> Result<NetworkMap, RuntimeError> {
         warn!("cannot find networkmap in the default location, using a empty networkmap");
@@ -104,16 +65,8 @@ impl Cmd {
     }
 
     pub fn read_nm_from_file(&self) -> Result<NetworkMap, RuntimeError> {
-        let nm_path = match &self.networkmap {
-            Some(p) => {
-                let path = Path::new(p);
-                if path.exists() && (path.is_file() || path.is_symlink()) {
-                    p.clone()
-                } else {
-                    return Err(RuntimeError::NoSuchFile(p.clone()));
-                }
-            }
-
+        match &self.networkmap {
+            Some(p) => NetworkMap::try_from(p.clone()).or_else(|e| Err(RuntimeError::from(e))),
             None => {
                 info!("networkmap not specified, using the default location");
                 if let Some(home_dir) = home::home_dir() {
@@ -122,34 +75,34 @@ impl Cmd {
                         .to_str()
                         .unwrap()
                         .to_string();
-                    let path = Path::new(&p);
-                    if !path.exists() {
-                        return Cmd::empty();
-                    } else {
-                        p
-                    }
+                    debug!("default location is: {}", p);
+                    NetworkMap::try_from(p).or_else(|e| Err(RuntimeError::from(e))).or_else(|e| {
+                        match e {
+                            RuntimeError::NoSuchFile(..) => {
+                                debug!("not found in `bodoConnect` folde, trying fallback: `bodo_connect`");
+                                let p_fallback = home_dir
+                                    .join(".config/bodoConnect/networkmap.json")
+                                    .to_str()
+                                    .unwrap()
+                                    .to_string();
+                                NetworkMap::try_from(p_fallback).or_else(|e| Err(RuntimeError::from(e)))
+                            },
+                            _ => Err(e)
+                        }
+                    })
                 } else {
                     error!("cannot get user's home directory");
                     return Cmd::empty();
                 }
             }
-        };
-
-        debug!("using networkmap file: {}", nm_path);
-
-        let subnets: Vec<Subnet> =
-            match serde_json::from_str(&match read_to_string(nm_path.clone()) {
-                Ok(s) => s,
-                Err(e) => return Err(RuntimeError::ReadError(e.to_string(), nm_path)),
-            }) {
-                Ok(n) => n,
-                Err(e) => return Err(RuntimeError::ParseError(e.to_string())),
-            };
-
-        match NetworkMap::try_from(subnets) {
-            Ok(nm) => Ok(nm),
-            Err(e) => Err(RuntimeError::DuplicateError(e)),
         }
+
+        // debug!("using networkmap file: {}", nm_path);
+        //
+        // match NetworkMap::try_from(nm_path) {
+        //     Ok(n) => Ok(n),
+        //     Err(e) => Err(RuntimeError::from(e)),
+        // }
     }
 
     pub async fn main(&mut self) -> Result<(), RuntimeError> {

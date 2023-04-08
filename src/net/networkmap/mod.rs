@@ -1,10 +1,15 @@
+#[cfg(feature = "serde")]
+mod parsing;
+#[cfg(feature = "serde")]
+pub use parsing::NetworkMapParseError;
+
 #[cfg(not(feature = "log"))]
 use crate::{debug, info};
 use external_ip::get_ip;
 #[cfg(feature = "log")]
 use log::{debug, info};
 use reachable::{IcmpTarget, ResolvePolicy, Status, Target, TcpTarget};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::time::Duration;
 #[cfg(feature = "wake")]
@@ -225,22 +230,5 @@ impl NetworkMap {
                 }
             },
         }
-    }
-}
-
-impl TryFrom<Vec<Subnet>> for NetworkMap {
-    type Error = String;
-
-    fn try_from(value: Vec<Subnet>) -> Result<Self, Self::Error> {
-        let mut n = NetworkMap::default();
-        let mut subs = HashSet::new();
-        for s in value.into_iter() {
-            if subs.contains(&s.subdomain) {
-                return Err(s.subdomain);
-            }
-            subs.insert(s.subdomain.clone());
-            n.add_subnet(s);
-        }
-        Ok(n)
     }
 }
