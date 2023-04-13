@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
-use std::collections::HashMap;
-
+use std::collections::BTreeMap;
 use crate::ssh::hop::Hop;
 
 pub trait SSHOption {
@@ -12,13 +11,13 @@ pub trait SSHOption {
 
 #[derive(Default)]
 pub struct SSHOptionStore {
-    options: HashMap<&'static str, Box<dyn SSHOption>>,
+    options: BTreeMap<&'static str, Box<dyn SSHOption>>,
 }
 
 impl SSHOptionStore {
     pub fn new() -> Self {
         Self {
-            options: HashMap::new(),
+            options: BTreeMap::new(),
         }
     }
 

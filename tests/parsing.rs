@@ -53,7 +53,7 @@ fn parsing_test() {
     assert_eq!(block_on(nm.to_ssh(
         nm.get_host("x").unwrap(),
         None,
-        &mut vec!["echo".to_string(), "-n".to_string(), "ciao\\n".to_string()],
+        &mut vec!["rm", "-rf", "/"],
         None
-    )).to_string(), "ssh -J martian@mars.orbit:23 -p 5 x@10.8.5.2 echo -n ciao\\n");
+    )).to_string(), "ssh -J martian@mars.orbit:23 -p 5 x@10.8.5.2 rm -rf /");
 }

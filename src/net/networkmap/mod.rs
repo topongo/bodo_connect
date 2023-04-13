@@ -116,9 +116,12 @@ impl NetworkMap {
     }
 
     pub async fn hops_gen(&self, target: &Host, subnet: Option<&Subnet>) -> Option<Vec<Hop>> {
+        fn actual(t_s: &Subnet) -> Vec<Hop> {
+            let master = t_s.get_master();
+            vec![master.get_hop(Some(t_s))]
+        }
+
         let target_subnet = self.get_host_subnet(target);
-        let master = target_subnet.get_master();
-        let hops = vec![master.get_hop(Some(target_subnet))];
 
         match subnet {
             Some(s) => {
@@ -126,12 +129,16 @@ impl NetworkMap {
                 if target_subnet == s {
                     None
                 } else {
-                    Some(hops)
+                    Some(actual(target_subnet))
                 }
             }
             None => {
                 // unknown subnet
-                Some(hops)
+                if target.is_master() {
+                    None
+                } else {
+                    Some(actual(target_subnet))
+                }
             }
         }
     }
@@ -140,7 +147,7 @@ impl NetworkMap {
         &self,
         target: &Host,
         subnet: Option<&Subnet>,
-        command: &mut Vec<String>,
+        command: &mut Vec<impl ToString>,
         extra_options: Option<SSHOptionStore>,
     ) -> SSHProcess {
         debug!("generating target string");
@@ -172,7 +179,11 @@ impl NetworkMap {
         let mut output = vec!["ssh".to_string()];
         output.append(&mut options.args_gen());
         output.push(target_string);
-        output.append(command);
+        output.append(&mut command
+            .iter()
+            .map(|s| s.to_string())
+            .collect()
+        );
         SSHProcess::new(output)
     }
 
