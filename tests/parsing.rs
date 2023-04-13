@@ -8,8 +8,10 @@ fn parsing_test() {
     use std::net::IpAddr;
     use std::str::FromStr;
     use bodo_connect::net::Host;
+    #[cfg(feature = "wake")]
     use reqwest::Method;
     use bodo_connect::net::Subnet;
+    #[cfg(feature = "wake")]
     use bodo_connect::waker::Waker;
 
     let input = r#"
@@ -46,6 +48,7 @@ fn parsing_test() {
         IpAddr::from_str("10.8.5.2").unwrap(),
         5,
         None,
+        #[cfg(feature = "wake")]
         Some(Waker::HttpWaker {method: Method::GET, url: "https://example.com".to_string()})
     ));
 

@@ -158,8 +158,13 @@ impl Cmd {
 
             #[cfg(feature = "wake")]
             if self.wake {
+                #[cfg(feature = "log")]
                 if let Err(s) = nm.wake(target).await {
                     error!("while waking: {}", s);
+                }
+                #[cfg(not(feature = "log"))]
+                if let Err(_) = nm.wake(target).await {
+                    // nothing 'till now
                 }
             }
 
