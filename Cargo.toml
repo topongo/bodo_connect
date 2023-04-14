@@ -1,6 +1,6 @@
 [package]
 name = "bodo_connect"
-version = "0.6.1"
+version = "0.6.2"
 edition = "2021"
 description = "A library for mapping/connecting to your hosts in the whole world wide web."
 license = "GPL-3.0"
@@ -24,6 +24,9 @@ home = { version = "0.5.4", optional = true }
 mac_address = { version = "1.1.4", optional = true }
 reqwest = { version = "0.11.16", optional = true }
 clap = { version = "4.2.1", features = ["derive"], optional = true }
+
+[patch.crates-io]
+mac_address = { git = 'https://github.com/topongo/mac_address' }
 
 [features]
 default = ["wake", "cmd", "serde", "log"]
