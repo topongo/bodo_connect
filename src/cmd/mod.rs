@@ -46,10 +46,10 @@ pub struct Cmd {
     )]
     dry: bool,
     #[cfg(feature = "rsync")]
-    #[arg(short = 'R', long, help = "[WIP] Creates rsync commands")]
+    #[arg(short = 'R', long, help = "Creates rsync commands")]
     rsync: bool,
     #[cfg(feature = "sshfs")]
-    #[arg(short = 'S', long, help = "[WIP] Creates sshfs commands")]
+    #[arg(short = 'S', long, help = "Creates sshfs commands")]
     sshfs: bool,
     #[arg(short, long, help = "Retry connection until ssh returns 0")]
     loop_: bool,
