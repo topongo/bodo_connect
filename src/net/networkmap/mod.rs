@@ -1,5 +1,6 @@
 #[cfg(feature = "serde")]
 mod parsing;
+
 #[cfg(feature = "serde")]
 pub use parsing::NetworkMapParseError;
 
@@ -14,9 +15,12 @@ use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::time::Duration;
 #[cfg(feature = "wake")]
 use subprocess::ExitStatus;
+#[cfg(feature = "sshfs")]
+use crate::cmd::sshfs::SSHFSProcess;
 
 use crate::net::{Host, Subnet};
 use crate::ssh::{options::*, *};
+use crate::ssh::process::Process;
 #[cfg(feature = "wake")]
 use crate::waker::Waker;
 
@@ -143,28 +147,18 @@ impl NetworkMap {
         }
     }
 
-    pub async fn to_ssh(
-        &self,
-        target: &Host,
-        subnet: Option<&Subnet>,
-        command: &mut Vec<impl ToString>,
-        extra_options: Option<SSHOptionStore>,
-    ) -> SSHProcess {
-        debug!("generating target string");
-        let target_string = target.identity_string();
-        info!("host string genetared: {}", target_string);
-
+    pub fn gen_ssh_options(hops: Option<Vec<Hop>>, port: Option<PortOption>, extra_options: Option<SSHOptionStore>) -> SSHOptionStore {
         debug!("generating ssh options");
         let mut options = SSHOptionStore::default();
 
-        if let Some(hops) = self.hops_gen(target, subnet).await {
+        if let Some(hops) = hops {
             debug!(
                 "hops required, adding to options: {:?}",
                 hops.iter().map(|h| h.to_string()).collect::<Vec<String>>()
             );
             options.add_option(Box::new(JumpHosts::new(hops)));
         }
-        if let Some(p_o) = target.port_option() {
+        if let Some(p_o) = port {
             debug!("port specification needed, adding to options: {:?}", p_o);
             options.add_option(Box::new(p_o))
         }
@@ -175,16 +169,59 @@ impl NetworkMap {
             options.merge(o);
         }
 
+        options
+    }
+
+    #[cfg(feature = "sshfs")]
+    pub async fn to_sshfs(
+        &self,
+        target: &Host,
+        subnet: Option<&Subnet>,
+        remote: String,
+        mountpoint: String
+    ) -> Box<dyn Process> {
+        debug!("generating target string");
+        let target_string = target.identity_string();
+        info!("host string genetared: {}", target_string);
+
+        Box::new(SSHFSProcess::new(
+            target_string,
+            remote,
+            mountpoint,
+            NetworkMap::gen_ssh_options(
+                self.hops_gen(target, subnet).await,
+                target.port_option(),
+                None
+            )
+        ))
+    }
+
+    pub async fn to_ssh(
+        &self,
+        target: &Host,
+        subnet: Option<&Subnet>,
+        command: &mut Vec<impl ToString>,
+        extra_options: Option<SSHOptionStore>,
+    ) -> Box<dyn Process> {
+        debug!("generating target string");
+        let target_string = target.identity_string();
+        info!("host string genetared: {}", target_string);
+
         debug!("generating ssh command");
         let mut output = vec!["ssh".to_string()];
-        output.append(&mut options.args_gen());
+        output.append(&mut NetworkMap::gen_ssh_options(
+            self.hops_gen(target, subnet).await,
+            target.port_option(),
+            extra_options
+        ).args_gen());
         output.push(target_string);
         output.append(&mut command
             .iter()
             .map(|s| s.to_string())
             .collect()
         );
-        SSHProcess::new(output)
+
+        Box::new(SSHProcess::new(output))
     }
 
     #[cfg(feature = "wake")]

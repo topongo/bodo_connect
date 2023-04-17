@@ -15,6 +15,10 @@ pub enum RuntimeError {
     IOError(String),
     ParseError(String),
     DuplicateError(String),
+    #[cfg(feature = "sshfs")]
+    TooManyArguments(Vec<String>),
+    #[cfg(feature = "sshfs")]
+    TooFewArguments,
     SSHError(i32),
     SSHUnknownError,
     SpawnError(String, String),
@@ -38,6 +42,13 @@ impl RuntimeError {
             RuntimeError::NoSuchHost(h) => error!("no such host: {}", h),
             RuntimeError::UnknownError(b) => error!("unkwnown error: {}", b.to_string()),
             RuntimeError::UnknownUnrepresentableError => error!("unkwnown error"),
+            #[cfg(feature = "sshfs")]
+            RuntimeError::TooManyArguments(a) => error!("extra arguments for sshfs mode: `{}`", a.join(" ")),
+            #[cfg(feature = "sshfs")]
+            RuntimeError::TooFewArguments => {
+                error!("missing parameters for sshfs mode, usage:");
+                error!("\tbodoConnect [OPTIONS] --sshfs HOST REMOTE_PATH MOUNT_POINT");
+            }
         }
     }
 
@@ -54,6 +65,10 @@ impl RuntimeError {
             RuntimeError::SpawnError(..) => -2,
             RuntimeError::UnknownError(..) => -3,
             RuntimeError::UnknownUnrepresentableError => -4,
+            #[cfg(feature = "sshfs")]
+            RuntimeError::TooManyArguments(..) => 8,
+            #[cfg(feature = "sshfs")]
+            RuntimeError::TooFewArguments => 9,
         }
     }
 }

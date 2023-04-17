@@ -1,4 +1,7 @@
 mod runtime_error;
+#[cfg(feature = "sshfs")]
+pub mod sshfs;
+
 pub use runtime_error::RuntimeError;
 
 #[cfg(feature = "log")]
@@ -42,8 +45,10 @@ pub struct Cmd {
         help = "Send to stdout the generated command without executing it"
     )]
     dry: bool,
+    #[cfg(feature = "rsync")]
     #[arg(short = 'R', long, help = "[WIP] Creates rsync commands")]
     rsync: bool,
+    #[cfg(feature = "sshfs")]
     #[arg(short = 'S', long, help = "[WIP] Creates sshfs commands")]
     sshfs: bool,
     #[arg(short, long, help = "Retry connection until ssh returns 0")]
@@ -134,6 +139,7 @@ impl Cmd {
 
             debug!("extra arguments: {:?}", self.extra);
 
+            #[cfg(feature = "rsync")]
             if self.rsync {
                 debug!("popping elements concerning user and host...");
                 if let Some((index, _)) = self.extra
@@ -154,8 +160,29 @@ impl Cmd {
             }
 
             let current_subnet = nm.find_current_subnet().await;
-            let a_proc = nm.to_ssh(target, current_subnet, &mut self.extra, Some(extra_options));
 
+            #[cfg(feature = "sshfs")]
+            let mut proc = if self.sshfs {
+                if self.extra.len() == 2 {
+                    nm.to_sshfs(target, current_subnet, self.extra[0].clone(), self.extra[1].clone()).await
+                } else {
+                    return if self.extra.len() < 2 {
+                        Err(RuntimeError::TooFewArguments)
+                    } else {
+                        Err(RuntimeError::TooManyArguments(
+                            (2..self.extra.len())
+                                .map(|e| self.extra[e].clone())
+                                .collect::<Vec<String>>()
+                        ))
+                    }
+                }
+            } else {
+                nm.to_ssh(target, current_subnet, &mut self.extra, Some(extra_options)).await
+            };
+
+            #[cfg(not(feature = "sshfs"))]
+            let mut proc = nm.to_ssh(target, current_subnet, &mut self.extra, Some(extra_options)).await;
+            
             #[cfg(feature = "wake")]
             if self.wake {
                 #[cfg(feature = "log")]
@@ -167,8 +194,6 @@ impl Cmd {
                     // nothing 'till now
                 }
             }
-
-            let mut proc = a_proc.await;
 
             if self.dry {
                 println!("{}", proc);

@@ -1,7 +1,61 @@
 #![cfg(feature = "serde")]
 
 use futures::executor::block_on;
-use bodo_connect::net::NetworkMap;
+use bodo_connect::net::{NetworkMap, Subnet};
+
+const NETWORKMAP_EXAMPLE: &str = r#"
+[
+  {
+    "subdomain": "earth.orbit",
+    "eip": "1.2.3.4",
+    "hosts": [
+      {
+        "name": "earth",
+        "uuid": "---",
+        "ip": "10.0.0.1",
+        "port": 22,
+        "eport": 22,
+        "user": "human"
+      },
+      {
+        "name": "moon",
+        "ip": "10.0.0.2",
+        "uuid": "---",
+        "port": 444,
+        "user": "rock",
+        "waker": {
+          "method": "get",
+          "url": "https://earth.orbit/api/v1/wake/moon/"
+        }
+      }
+    ]
+  },
+  {
+    "subdomain": "mars.orbit",
+    "eip": null,
+    "hosts": [
+      {
+        "name": "mars",
+        "uuid": "---",
+        "ip": "192.168.1.1",
+        "port": 22,
+        "eport": 22,
+        "user": "martian"
+      },
+      {
+        "name": "phobos",
+        "ip": "192.168.1.2",
+        "uuid": "---",
+        "port": 444,
+        "user": "rover",
+        "waker": {
+          "mac": "00:08:55:05:ef:87"
+        }
+      }
+    ]
+  }
+]
+"#;
 
 #[test]
 fn parsing_test() {
@@ -59,4 +113,13 @@ fn parsing_test() {
         &mut vec!["rm", "-rf", "/"],
         None
     )).to_string(), "ssh -J martian@mars.orbit:23 -p 5 x@10.8.5.2 rm -rf /");
+}
+
+#[cfg(feature = "sshfs")]
+#[test]
+fn sshfs() {
+    let nm = NetworkMap::try_from(serde_json::from_str::<Vec<Subnet>>(NETWORKMAP_EXAMPLE).unwrap()).unwrap();
+    let target = nm.get_host("phobos").unwrap();
+    let proc = block_on(nm.to_sshfs(target, None, "/home/pi".to_string(), "/mnt/temp".to_string()));
+    println!("{}", proc)
 }

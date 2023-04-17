@@ -8,23 +8,13 @@ use std::fmt::{Display, Formatter};
 
 use subprocess::{ExitStatus, Popen, PopenConfig, PopenError, Redirection};
 
-pub struct SSHProcess {
-    args: Vec<String>,
-}
+pub trait Process {
+    fn get_args(&self) -> Vec<String>;
 
-impl SSHProcess {
-    pub fn new(args: Vec<String>) -> SSHProcess {
-        SSHProcess { args }
-    }
-
-    pub fn get_args(&self) -> &Vec<String> {
-        &self.args
-    }
-
-    pub fn run(&mut self, opts: Option<PopenConfig>) -> Result<ExitStatus, PopenError> {
+    fn run(&mut self, opts: Option<PopenConfig>) -> Result<ExitStatus, PopenError> {
         debug!("spawning new ssh process");
         match Popen::create(
-            &self.args,
+            &self.get_args(),
             match opts {
                 Some(x) => x,
                 None => PopenConfig::default(),
@@ -49,14 +39,7 @@ impl SSHProcess {
         }
     }
 
-    // pub fn join(&mut self) -> Result<ExitStatus, PopenError> {
-    //     match &mut self.process {
-    //         Some(ref mut p) => p.wait(),
-    //         None => panic!("cannot wait unstarted process")
-    //     }
-    // }
-
-    pub fn run_stdout_to_stderr(&mut self) -> Result<ExitStatus, PopenError> {
+    fn run_stdout_to_stderr(&mut self) -> Result<ExitStatus, PopenError> {
         debug!("passing redirecting options to ssh process");
         self.run(Some(PopenConfig {
             stdout: Redirection::Merge,
@@ -65,8 +48,24 @@ impl SSHProcess {
     }
 }
 
-impl Display for SSHProcess {
+pub struct SSHProcess {
+    args: Vec<String>,
+}
+
+impl SSHProcess {
+    pub fn new(args: Vec<String>) -> SSHProcess {
+        SSHProcess { args }
+    }
+}
+
+impl Process for SSHProcess {
+    fn get_args(&self) -> Vec<String> {
+        self.args.clone()
+    }
+}
+
+impl Display for dyn Process {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.args.join(" "))
+        write!(f, "{}", self.get_args().join(" "))
     }
 }
