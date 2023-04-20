@@ -20,7 +20,7 @@ use crate::ssh::SSHOptionStore;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "bodo_connect",
+    name = "bodoConnect",
     about = "create ssh command on the fly no matter in which network you are",
     version = env!("CARGO_PKG_VERSION"),
     author = "topongo"
