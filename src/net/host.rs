@@ -58,7 +58,7 @@ impl Host {
         }
     }
 
-    pub fn identity_string(&self) -> String {
+    pub fn identity(&self) -> String {
         format!("{}@{}", self.user, self.ip)
     }
 

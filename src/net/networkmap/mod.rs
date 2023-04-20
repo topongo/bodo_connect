@@ -119,7 +119,7 @@ impl NetworkMap {
         }
     }
 
-    pub async fn hops_gen(&self, target: &Host, subnet: Option<&Subnet>) -> Option<Vec<Hop>> {
+    pub async fn hops_gen(&self, target: &Host, subnet: Option<&Subnet>) -> (Hop, Vec<Hop>) {
         fn actual(t_s: &Subnet) -> Vec<Hop> {
             let master = t_s.get_master();
             vec![master.get_hop(Some(t_s))]
@@ -131,27 +131,31 @@ impl NetworkMap {
             Some(s) => {
                 // known subnet
                 if target_subnet == s {
-                    None
+                    // client is in target's subnet
+                    (target.get_hop(None), vec![])
                 } else {
-                    Some(actual(target_subnet))
+                    // client is in known subnet, a different one from the target
+                    (target.get_hop(Some(target_subnet)), actual(target_subnet))
                 }
             }
             None => {
                 // unknown subnet
                 if target.is_master() {
-                    None
+                    // directly connect to target
+                    (target.get_hop(Some(target_subnet)), vec![])
                 } else {
-                    Some(actual(target_subnet))
+                    // use master to connect to target
+                    (target.get_hop(None), actual(target_subnet))
                 }
             }
         }
     }
 
-    pub fn gen_ssh_options(hops: Option<Vec<Hop>>, port: Option<PortOption>, extra_options: Option<SSHOptionStore>) -> SSHOptionStore {
+    pub fn gen_ssh_options(hops: Vec<Hop>, port: Option<PortOption>, extra_options: Option<SSHOptionStore>) -> SSHOptionStore {
         debug!("generating ssh options");
         let mut options = SSHOptionStore::default();
 
-        if let Some(hops) = hops {
+        if !hops.is_empty() {
             debug!(
                 "hops required, adding to options: {:?}",
                 hops.iter().map(|h| h.to_string()).collect::<Vec<String>>()
@@ -180,16 +184,16 @@ impl NetworkMap {
         remote: String,
         mountpoint: String
     ) -> Box<dyn Process> {
-        debug!("generating target string");
-        let target_string = target.identity_string();
-        info!("host string genetared: {}", target_string);
+        debug!("generating route to target");
+        let (target_id, route) = self.hops_gen(target, subnet).await;
+        info!("route generated: {}", join_hops(&target_id, &route, " -> "));
 
         Box::new(SSHFSProcess::new(
-            target_string,
+            target_id.to_string(),
             remote,
             mountpoint,
             NetworkMap::gen_ssh_options(
-                self.hops_gen(target, subnet).await,
+                route,
                 target.port_option(),
                 None
             )
@@ -203,18 +207,19 @@ impl NetworkMap {
         command: &mut Vec<impl ToString>,
         extra_options: Option<SSHOptionStore>,
     ) -> Box<dyn Process> {
-        debug!("generating target string");
-        let target_string = target.identity_string();
-        info!("host string genetared: {}", target_string);
+        debug!("generating route to target");
+        let (target_id, route) = self.hops_gen(target, subnet).await;
+
+        info!("route generated: {}", join_hops(&target_id, &route, " -> "));
 
         debug!("generating ssh command");
         let mut output = vec!["ssh".to_string()];
         output.append(&mut NetworkMap::gen_ssh_options(
-            self.hops_gen(target, subnet).await,
+            route,
             target.port_option(),
             extra_options
         ).args_gen());
-        output.push(target_string);
+        output.push(target_id.to_string());
         output.append(&mut command
             .iter()
             .map(|s| s.to_string())

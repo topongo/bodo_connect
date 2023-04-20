@@ -88,7 +88,7 @@ impl SSHOption for JumpHosts {
         Some(
             self.hops
                 .iter()
-                .map(|h| h.to_string())
+                .map(|h| h.to_string_with_port())
                 .collect::<Vec<String>>()
                 .join("."),
         )

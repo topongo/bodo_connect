@@ -8,5 +8,7 @@ pub mod options {
 }
 
 pub use hop::Hop;
+#[cfg(feature = "log")]
+pub use hop::join_hops;
 pub use options_internal::SSHOptionStore;
 pub use process::SSHProcess;

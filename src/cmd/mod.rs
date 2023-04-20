@@ -134,7 +134,7 @@ impl Cmd {
             let mut extra_options = SSHOptionStore::new();
 
             if self.tty {
-                extra_options.add_option(Box::new(GenericOption::Switch("-t")))
+                extra_options.add_option(Box::new(GenericOption::Switch("t")))
             }
 
             debug!("extra arguments: {:?}", self.extra);
