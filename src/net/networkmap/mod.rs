@@ -43,7 +43,7 @@ impl NetworkMap {
         self.subnets.insert(s.subdomain.clone(), s);
     }
 
-    pub fn get_host(&self, q: &str) -> Option<&Host> {
+    pub fn get_host(&self, q: &str) -> Option<&dyn Host> {
         for s in self.subnets.values() {
             match s.get_host(q) {
                 None => {}
@@ -81,12 +81,12 @@ impl NetworkMap {
         })
     }
 
-    pub fn get_masters(&self) -> Vec<(&Subnet, &Host)> {
+    pub fn get_masters(&self) -> Vec<(&Subnet, &dyn Host)> {
         self.subnets.values().map(|s| (s, s.get_master())).collect()
     }
 
     /// Gets master of given host
-    pub fn get_host_subnet(&self, h: &Host) -> &Subnet {
+    pub fn get_host_subnet(&self, h: &dyn Host) -> &Subnet {
         for s in self.subnets.values() {
             if s.has_host(h) {
                 return s;
@@ -95,7 +95,7 @@ impl NetworkMap {
         panic!("host is not in any subnet")
     }
 
-    pub fn get_host_master(&self, h: &Host) -> &Host {
+    pub fn get_host_master(&self, h: &dyn Host) -> &dyn Host {
         self.get_host_subnet(h).get_master()
     }
 
@@ -111,7 +111,7 @@ impl NetworkMap {
         } else {
             // no, check if some network master is available
             for (s, m) in self.get_masters() {
-                if NetworkMap::is_available(m.ip, Some(m.port)) {
+                if NetworkMap::is_available(m.ip(), Some(m.port())) {
                     return Some(s);
                 }
             }
@@ -119,7 +119,7 @@ impl NetworkMap {
         }
     }
 
-    pub async fn hops_gen(&self, target: &Host, subnet: Option<&Subnet>) -> (Hop, Vec<Hop>) {
+    pub async fn hops_gen(&self, target: &dyn Host, subnet: Option<&Subnet>) -> (Hop, Vec<Hop>) {
         fn actual(t_s: &Subnet) -> Vec<Hop> {
             let master = t_s.get_master();
             vec![master.get_hop(Some(t_s))]
@@ -135,7 +135,7 @@ impl NetworkMap {
                     (target.get_hop(None), vec![])
                 } else {
                     // client is in known subnet, a different one from the target
-                    (target.get_hop(Some(target_subnet)), actual(target_subnet))
+                    (target.get_hop(None), actual(target_subnet))
                 }
             }
             None => {
@@ -179,7 +179,7 @@ impl NetworkMap {
     #[cfg(feature = "sshfs")]
     pub async fn to_sshfs(
         &self,
-        target: &Host,
+        target: &dyn Host,
         subnet: Option<&Subnet>,
         remote: String,
         mountpoint: String
@@ -202,7 +202,7 @@ impl NetworkMap {
 
     pub async fn to_ssh(
         &self,
-        target: &Host,
+        target: &dyn Host,
         subnet: Option<&Subnet>,
         command: &mut Vec<impl ToString>,
         extra_options: Option<SSHOptionStore>,
@@ -230,8 +230,8 @@ impl NetworkMap {
     }
 
     #[cfg(feature = "wake")]
-    pub async fn wake(&self, target: &Host) -> Result<(), String> {
-        match &target.waker {
+    pub async fn wake(&self, target: &dyn Host) -> Result<(), String> {
+        match &target.waker() {
             None => {
                 info!("won't wake host since it hasn't any waker");
                 Ok(())
@@ -255,7 +255,7 @@ impl NetworkMap {
                 Waker::WolWaker { mac } => {
                     info!("waking host with mac {} through ssh", mac);
                     let master = self.get_host_master(target);
-                    info!("master to execute wake on is {}", master.name);
+                    info!("master to execute wake on is {}", master.name());
                     debug!("generating ssh command for wake operation");
                     let mut wake_proc = self
                         .to_ssh(

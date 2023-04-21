@@ -25,8 +25,8 @@ pub fn mac_parser<'de, D>(deserializer: D) -> Result<MacAddress, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let method_string = String::deserialize(deserializer)?;
-    MacAddress::from_str(&method_string).map_err(Error::custom)
+    let mac_string = String::deserialize(deserializer)?;
+    MacAddress::from_str(&mac_string).map_err(Error::custom)
 }
 
 #[cfg(feature = "serde")]
