@@ -37,7 +37,7 @@ impl Process for SSHFSProcess {
                 .map(|(k, val)| {
                     match val {
                         Some(v) => format!("{}={}", k, v),
-                        None => format!("{}", k)
+                        None => k.to_string()
                     }
                 })
                 .collect::<Vec<String>>()

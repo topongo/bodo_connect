@@ -14,7 +14,7 @@ pub async fn get_ip() -> Option<IpAddr> {
         .unwrap();
     match client.get("https://icanhazip.com/").send().await {
         Ok(res) => match res.text().await {
-            Ok(s) => match IpAddr::from_str(&*s.trim()) {
+            Ok(s) => match IpAddr::from_str(s.trim()) {
                 Ok(i) => return Some(i),
                 Err(e) => debug!("{:?} while parsing {}", e, s)
             }

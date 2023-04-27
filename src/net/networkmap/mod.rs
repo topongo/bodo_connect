@@ -144,12 +144,10 @@ impl NetworkMap {
             } else {
                 None
             }
-        } else {
-            if target.is_master() {
+        } else if target.is_master() {
                 Some(target_subnet)
-            } else {
-                None
-            }
+        } else {
+            None
         });
 
         let hops= if target.is_master() {
@@ -229,7 +227,7 @@ impl NetworkMap {
         &self,
         target: &Host,
         subnet: Option<&Subnet>,
-        command: &mut Vec<impl ToString>,
+        command: &mut [impl ToString],
         extra_options: Option<SSHOptionStore>,
     ) -> Box<dyn Process> {
         debug!("generating route to target");
@@ -286,7 +284,7 @@ impl NetworkMap {
                         .to_ssh(
                             master,
                             None,
-                            &mut vec!["wol".to_string(), mac.to_string()],
+                            &mut ["wol".to_string(), mac.to_string()],
                             None,
                         )
                         .await;

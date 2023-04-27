@@ -71,7 +71,7 @@ impl Cmd {
 
     pub fn read_nm_from_file(&self) -> Result<NetworkMap, RuntimeError> {
         match &self.networkmap {
-            Some(p) => NetworkMap::try_from(p.clone()).or_else(|e| Err(RuntimeError::from(e))),
+            Some(p) => NetworkMap::try_from(p.clone()).map_err(RuntimeError::from),
             None => {
                 info!("networkmap not specified, using the default location");
                 if let Some(home_dir) = home::home_dir() {
@@ -81,7 +81,7 @@ impl Cmd {
                         .unwrap()
                         .to_string();
                     debug!("default location is: {}", p);
-                    NetworkMap::try_from(p).or_else(|e| Err(RuntimeError::from(e))).or_else(|e| {
+                    NetworkMap::try_from(p).map_err(RuntimeError::from).or_else(|e| {
                         match e {
                             RuntimeError::NoSuchFile(..) => {
                                 debug!("not found in `bodoConnect` folde, trying fallback: `bodo_connect`");
@@ -90,14 +90,14 @@ impl Cmd {
                                     .to_str()
                                     .unwrap()
                                     .to_string();
-                                NetworkMap::try_from(p_fallback).or_else(|e| Err(RuntimeError::from(e)))
+                                NetworkMap::try_from(p_fallback).map_err(RuntimeError::from)
                             },
                             _ => Err(e)
                         }
                     })
                 } else {
                     error!("cannot get user's home directory");
-                    return Cmd::empty();
+                    Cmd::empty()
                 }
             }
         }

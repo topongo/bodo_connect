@@ -87,16 +87,14 @@ impl TryFrom<String> for NetworkMap {
         let path = Path::new(&value);
         if !path.exists() {
             Err(NetworkMapParseError::from(NotFoundPath::from(value)))
-        } else {
-            if !path.is_file() {
+        } else if !path.is_file() {
                 Err(NetworkMapParseError::from(DirPath::from(value)))
-            } else {
-                let subnets: Vec<Subnet> = serde_json::from_str(&read_to_string(value)?)?;
+        } else {
+            let subnets: Vec<Subnet> = serde_json::from_str(&read_to_string(value)?)?;
 
-                match NetworkMap::try_from(subnets) {
-                    Ok(nm) => Ok(nm),
-                    Err(e) => Err(e as NetworkMapParseError),
-                }
+            match NetworkMap::try_from(subnets) {
+                Ok(nm) => Ok(nm),
+                Err(e) => Err(e as NetworkMapParseError),
             }
         }
     }

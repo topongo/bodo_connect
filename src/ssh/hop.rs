@@ -14,8 +14,12 @@ impl Hop {
 
     pub fn to_string_with_port(&self) -> String {
         format!("{}{}",
-                self.to_string(),
-                if self.port == 22 { "".to_string() } else { format!(":{}", self.port.to_string()) })
+                self,
+                if self.port == 22 {
+                    "".to_string()
+                } else {
+                    format!(":{}", self.port)
+                })
     }
 }
 
