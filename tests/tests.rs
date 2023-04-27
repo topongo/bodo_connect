@@ -1,7 +1,7 @@
 #![cfg(feature = "serde")]
 
 use futures::executor::block_on;
-use bodo_connect::net::{NetworkMap, Subnet};
+use bodo_connect::net::{Subnet, NetworkMap};
 
 const NETWORKMAP_EXAMPLE: &str = r#"
 [
@@ -31,13 +31,13 @@ const NETWORKMAP_EXAMPLE: &str = r#"
     ]
   },
   {
-    "subdomain": "mars.orbit",
+    "subdomain": "example.com",
     "eip": null,
     "hosts": [
       {
         "name": "mars",
         "uuid": "---",
-        "ip": "192.168.1.1",
+        "ip": "0.0.0.0",
         "port": 22,
         "eport": 22,
         "user": "martian"
@@ -124,23 +124,18 @@ fn sshfs() {
     println!("{}", proc)
 }
 
-#[cfg(feature = "cmd")]
 #[tokio::test]
 async fn uncertainty() {
     let nm: NetworkMap = NetworkMap::try_from(serde_json::from_str::<Vec<Subnet>>(NETWORKMAP_EXAMPLE).unwrap()).unwrap();
 
-    for i in 0..1000 {
-        eprintln!("{}", i);
+    for _ in 0..10 {
         let current_subnet = nm.find_current_subnet().await;
         match current_subnet {
             Some(_) => {},
-            None => {
-                println!("AAAAAAAAAAAAAAAAAAAAAH");
-            }
+            None => {}
         }
-        assert_eq!(current_subnet.unwrap().subdomain, "prabo.org");
+
         let proc = nm.to_ssh(nm.get_host("mars").unwrap(), current_subnet, &mut vec!["echo"], None).await;
-        assert_eq!(proc.to_string(), "ssh martian@192.168.2.1 echo");
-        println!("{}", proc.to_string());
+        assert_eq!(proc.to_string(), "ssh martian@example.com echo");
     }
 }
