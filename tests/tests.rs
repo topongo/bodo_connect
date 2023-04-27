@@ -123,3 +123,24 @@ fn sshfs() {
     let proc = block_on(nm.to_sshfs(target, None, "/home/pi".to_string(), "/mnt/temp".to_string()));
     println!("{}", proc)
 }
+
+#[cfg(feature = "cmd")]
+#[tokio::test]
+async fn uncertainty() {
+    let nm: NetworkMap = NetworkMap::try_from(serde_json::from_str::<Vec<Subnet>>(NETWORKMAP_EXAMPLE).unwrap()).unwrap();
+
+    for i in 0..1000 {
+        eprintln!("{}", i);
+        let current_subnet = nm.find_current_subnet().await;
+        match current_subnet {
+            Some(_) => {},
+            None => {
+                println!("AAAAAAAAAAAAAAAAAAAAAH");
+            }
+        }
+        assert_eq!(current_subnet.unwrap().subdomain, "prabo.org");
+        let proc = nm.to_ssh(nm.get_host("mars").unwrap(), current_subnet, &mut vec!["echo"], None).await;
+        assert_eq!(proc.to_string(), "ssh martian@192.168.2.1 echo");
+        println!("{}", proc.to_string());
+    }
+}

@@ -5,10 +5,10 @@ mod parsing;
 pub use parsing::NetworkMapParseError;
 
 #[cfg(not(feature = "log"))]
-use crate::{debug, info};
-use external_ip::get_ip;
+use crate::{debug, info, warn};
+use crate::net::external_ip::get_ip;
 #[cfg(feature = "log")]
-use log::{debug, info};
+use log::{debug, info, warn};
 use reachable::{IcmpTarget, ResolvePolicy, Status, Target, TcpTarget};
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
@@ -56,7 +56,7 @@ impl NetworkMap {
     pub fn is_available(ip: IpAddr, port: Option<u16>) -> bool {
         let rp = get_resolve_policy(ip);
         match match port {
-            Some(p) => TcpTarget::new(ip.to_string(), p, Duration::from_millis(500), rp)
+            Some(p) => TcpTarget::new(ip.to_string(), p, Duration::from_millis(2000), rp)
                 .check_availability(),
             None => IcmpTarget::new(ip.to_string(), rp).check_availability(),
         } {
@@ -103,18 +103,30 @@ impl NetworkMap {
     pub async fn find_current_subnet(&self) -> Option<&Subnet> {
         // are we online?
         if NetworkMap::is_available(CLOUD_FLARE, Some(80)) {
-            // yes, get client external ip
+            debug!("network: we are online");
+            debug!("getting external ip");
             match get_ip().await {
-                Some(client_eip) => self.get_subnet_by_ip(client_eip),
-                None => None,
+                Some(client_eip) => {
+                    info!("external ip is {}", client_eip);
+                    self.get_subnet_by_ip(client_eip)
+                },
+                None => {
+                    warn!("cannot get external ip");
+                    None
+                },
             }
         } else {
+            debug!("network: we are offline");
+            info!("no internet connection detected");
+            debug!("detecting subnet using masters...");
             // no, check if some network master is available
             for (s, m) in self.get_masters() {
                 if NetworkMap::is_available(m.ip, Some(m.port)) {
                     return Some(s);
                 }
+                debug!("{} is unavailable", m.get_hop(Some(s)));
             }
+            warn!("no internet connection, and not in a known subnet");
             None
         }
     }
@@ -126,29 +138,42 @@ impl NetworkMap {
         }
 
         let target_subnet = self.get_host_subnet(target);
+        let target_hop = target.get_hop(if let Some(s) = subnet {
+            if target_subnet != s && target.is_master() {
+                Some(target_subnet)
+            } else {
+                None
+            }
+        } else {
+            if target.is_master() {
+                Some(target_subnet)
+            } else {
+                None
+            }
+        });
 
-        match subnet {
-            Some(s) => {
-                // known subnet
-                if target_subnet == s {
-                    // client is in target's subnet
-                    (target.get_hop(None), vec![])
-                } else {
-                    // client is in known subnet, a different one from the target
-                    (target.get_hop(Some(target_subnet)), actual(target_subnet))
+        let hops= if target.is_master() {
+            debug!("router: target is master, connecting directly");
+            vec![]
+        } else {
+            match subnet {
+                Some(s) => {
+                    debug!("router: we are in a known subnet");
+                    if target_subnet == s {
+                        debug!("router: client is in target's subnet");
+                        vec![]
+                    } else {
+                        debug!("router: client is in known subnet, a different one from the target");
+                        actual(target_subnet)
+                    }
+                }
+                None => {
+                    debug!("router: we are in an unknown subnet");
+                    actual(target_subnet)
                 }
             }
-            None => {
-                // unknown subnet
-                if target.is_master() {
-                    // directly connect to target
-                    (target.get_hop(Some(target_subnet)), vec![])
-                } else {
-                    // use master to connect to target
-                    (target.get_hop(None), actual(target_subnet))
-                }
-            }
-        }
+        };
+        (target_hop, hops)
     }
 
     pub fn gen_ssh_options(hops: Vec<Hop>, port: Option<PortOption>, extra_options: Option<SSHOptionStore>) -> SSHOptionStore {
