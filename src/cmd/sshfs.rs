@@ -22,7 +22,7 @@ impl SSHFSProcess {
 
 impl Process for SSHFSProcess {
     fn get_args(&self) -> Vec<String> {
-        let mut args = vec!["sudo".to_string(), "sshfs".to_string()];
+        let mut args = vec!["sudo".to_string(), "--preserve-env=SSH_AUTH_SOCK".to_string(), "sshfs".to_string()];
 
         let mut options: BTreeMap<String, Option<String>> = BTreeMap::from([("allow_other".to_string(), None)]);
         let ssh_options = self.ssh_options.args_gen();

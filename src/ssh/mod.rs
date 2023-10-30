@@ -12,3 +12,7 @@ pub use hop::Hop;
 pub use hop::join_hops;
 pub use options_internal::SSHOptionStore;
 pub use process::SSHProcess;
+
+pub const fn default_port() -> u16 {
+    22
+}

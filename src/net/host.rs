@@ -16,6 +16,7 @@ pub struct Host {
     // identity
     pub name: String,
     pub ip: IpAddr,
+    #[cfg_attr(feature = "serde", serde(default = "crate::ssh::default_port"))]
     pub port: u16,
     // if this is not None then the host is a network master
     pub eport: Option<u16>,
