@@ -227,7 +227,7 @@ impl NetworkMap {
         &self,
         target: &Host,
         subnet: Option<&Subnet>,
-        command: &mut [impl ToString],
+        command: &[String],
         extra_options: Option<SSHOptionStore>,
     ) -> Box<dyn Process> {
         debug!("generating route to target");
@@ -243,11 +243,13 @@ impl NetworkMap {
             extra_options
         ).args_gen());
         output.push(target_id.to_string());
-        output.append(&mut command
+        output.push(command
             .iter()
-            .map(|s| s.to_string())
-            .collect()
+            .map(|s| if s.contains(' ') { format!("'{}'", s) } else { s.to_owned() })
+            .intersperse(" ".to_owned())
+            .collect::<String>()
         );
+        debug!("generated command: {:?}", output);
 
         Box::new(SSHProcess::new(output))
     }
@@ -284,7 +286,7 @@ impl NetworkMap {
                         .to_ssh(
                             master,
                             None,
-                            &mut ["wol".to_string(), mac.to_string()],
+                            &vec!["wol".to_string(), mac.to_string()],
                             None,
                         )
                         .await;

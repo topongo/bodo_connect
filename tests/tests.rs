@@ -110,7 +110,7 @@ fn parsing_test() {
     assert_eq!(block_on(nm.to_ssh(
         nm.get_host("x").unwrap(),
         None,
-        &mut vec!["rm", "-rf", "/"],
+        &vec!["rm".to_owned(), "-rf".to_owned(), "/".to_owned()],
         None
     )).to_string(), "ssh -J martian@mars.orbit:23 -p 5 x@10.8.5.2 rm -rf /");
 }
@@ -135,7 +135,7 @@ async fn uncertainty() {
             None => {}
         }
 
-        let proc = nm.to_ssh(nm.get_host("mars").unwrap(), current_subnet, &mut vec!["echo"], None).await;
+        let proc = nm.to_ssh(nm.get_host("mars").unwrap(), current_subnet, &vec!["echo".to_owned()], None).await;
         assert_eq!(proc.to_string(), "ssh martian@example.com echo");
     }
 }
