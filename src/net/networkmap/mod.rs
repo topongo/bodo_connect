@@ -267,7 +267,7 @@ impl NetworkMap {
                     let client = reqwest::Client::new();
                     match client.request(method.clone(), url).send().await {
                         Ok(res) => {
-                            debug!("status code of request: {}", res.status());
+                            debug!("status code of response: {}", res.status());
                             if res.status() == 200 {
                                 Ok(())
                             } else {

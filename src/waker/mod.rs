@@ -35,5 +35,5 @@ where
     D: Deserializer<'de>,
 {
     let method_string = String::deserialize(deserializer)?;
-    Method::from_str(&method_string).map_err(Error::custom)
+    Method::from_str(&method_string.to_uppercase()).map_err(Error::custom)
 }
