@@ -1,7 +1,7 @@
 #![cfg(feature = "serde")]
 
 use futures::executor::block_on;
-use bodo_connect::net::{Subnet, NetworkMap};
+use bodo_connect::{net::{Subnet, NetworkMap}, ssh::{SSHOptionStore, options::{PortOption, GenericOption}}};
 
 const NETWORKMAP_EXAMPLE: &str = r#"
 [
@@ -139,3 +139,27 @@ async fn uncertainty() {
         assert_eq!(proc.to_string(), "ssh martian@example.com echo");
     }
 }
+
+#[test]
+fn custom_ssh_command() {
+    let nm: NetworkMap = NetworkMap::try_from(serde_json::from_str::<Vec<Subnet>>(NETWORKMAP_EXAMPLE).unwrap()).unwrap();
+
+    let mars = nm.get_host("phobos").unwrap();
+    let sub = nm.get_host_subnet(mars);
+    let mut opts = SSHOptionStore::new(Some("ssh -L 8000:localhost:5000".to_owned()));
+    opts.add_option(Box::new(GenericOption::Switch("v")));
+    let ssh = block_on(nm.to_ssh(mars, None, &vec!["echo".to_owned()], Some(opts)));
+    assert_eq!(ssh.to_string(), "ssh -L 8000:localhost:5000 -J martian@example.com -p 444 -v rover@192.168.1.2 echo");
+
+    // Use rsh for insecure but fastest connection
+    let mut opts = SSHOptionStore::new(Some("rsh --debug".to_owned()));
+    opts.add_option(Box::new(GenericOption::Value("escape", "~".to_owned())));
+    let ssh = block_on(nm.to_ssh(
+        nm.get_host("mars").unwrap(),
+        None,
+        &["echo".to_owned()],
+        Some(opts)
+    ));
+    assert_eq!(ssh.to_string(), "rsh --debug --escape ~ martian@example.com echo");
+}
+

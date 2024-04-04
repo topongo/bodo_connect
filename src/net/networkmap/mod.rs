@@ -236,7 +236,7 @@ impl NetworkMap {
         info!("route generated: {}", join_hops(&target_id, &route, " -> "));
 
         debug!("generating ssh command");
-        let mut output = vec!["ssh".to_string()];
+        let mut output = extra_options.as_ref().map_or(None, |v| v.cmd.clone()).unwrap_or(vec!["ssh".to_owned()]);
         output.append(&mut NetworkMap::gen_ssh_options(
             route,
             target.port_option(),

@@ -53,6 +53,8 @@ pub struct Cmd {
     sshfs: bool,
     #[arg(short, long, help = "Retry connection until ssh returns 0")]
     loop_: bool,
+    #[arg(short = 'e', help = "Specify ssh-like command to execute and eventual options.")]
+    cmd: Option<String>,
     #[arg(help = "Host to connect to")]
     host: String,
     #[arg(
@@ -131,7 +133,7 @@ impl Cmd {
         };
 
         if let Some(target) = nm.get_host(&self.host) {
-            let mut extra_options = SSHOptionStore::new();
+            let mut extra_options = SSHOptionStore::new(self.cmd.clone());
 
             if self.tty {
                 extra_options.add_option(Box::new(GenericOption::Switch("t")))

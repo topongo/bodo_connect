@@ -12,11 +12,17 @@ pub trait SSHOption {
 #[derive(Default)]
 pub struct SSHOptionStore {
     options: BTreeMap<&'static str, Box<dyn SSHOption>>,
+    pub cmd: Option<Vec<String>>
 }
 
 impl SSHOptionStore {
-    pub fn new() -> Self {
+    pub fn new(cmd: Option<String>) -> Self {
         Self {
+            cmd: cmd.map(|f| 
+                     f.split(' ')
+                     .map(|s| s.to_string())
+                     .collect::<Vec<String>>()
+            ),
             options: BTreeMap::new(),
         }
     }
@@ -102,7 +108,10 @@ pub enum GenericOption {
 
 impl SSHOption for GenericOption {
     fn extended_name(&self) -> bool {
-        false
+        match self {
+            Self::Switch(s) => s,
+            Self::Value(s, _) => s,
+        }.len() > 1
     }
 
     fn name(&self) -> &'static str {
