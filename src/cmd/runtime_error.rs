@@ -4,7 +4,8 @@ use std::fmt::{Debug, Display, Formatter};
 use crate::error;
 #[cfg(feature = "log")]
 use log::error;
-use crate::net::NetworkMapParseError;
+#[cfg(feature = "serde")]
+use crate::parse::ParseError;
 
 pub trait Printable: ToString + Debug {}
 
@@ -12,7 +13,7 @@ pub trait Printable: ToString + Debug {}
 pub enum RuntimeError {
     NoSuchFile(String),
     PathIsDirectory(String),
-    IOError(String),
+    IOError(std::io::Error),
     ParseError(String),
     DuplicateError(String),
     #[cfg(feature = "sshfs")]
@@ -23,7 +24,9 @@ pub enum RuntimeError {
     SSHUnknownError,
     SpawnError(String, String),
     NoSuchHost(String),
+    MigrationError(Box<RuntimeError>),
     UnknownError(Box<dyn Printable>),
+    SerializationError(toml::ser::Error),
     UnknownUnrepresentableError
 }
 
@@ -49,6 +52,13 @@ impl RuntimeError {
                 error!("missing parameters for sshfs mode, usage:");
                 error!("\tbodoConnect [OPTIONS] --sshfs HOST REMOTE_PATH MOUNT_POINT");
             }
+            RuntimeError::MigrationError(e) => {
+                error!("there was an error while migrating configuration:");
+                e.print_error()
+            },
+            RuntimeError::SerializationError(e) => {
+                error!("serialization error: {}: {:?}", e, e);
+            }
         }
     }
 
@@ -69,6 +79,8 @@ impl RuntimeError {
             RuntimeError::TooManyArguments(..) => 8,
             #[cfg(feature = "sshfs")]
             RuntimeError::TooFewArguments => 9,
+            RuntimeError::MigrationError(..) => 10,
+            RuntimeError::SerializationError(..) => 11,
         }
     }
 }
@@ -81,14 +93,50 @@ impl Display for RuntimeError {
 
 impl Error for RuntimeError {}
 
-impl From<NetworkMapParseError> for RuntimeError {
-    fn from(value: NetworkMapParseError) -> Self {
+impl From<ParseError> for RuntimeError {
+    fn from(value: ParseError) -> Self {
         match value {
-            NetworkMapParseError::IOError(e) => RuntimeError::IOError(e.to_string()),
-            NetworkMapParseError::DuplicateError(s) => RuntimeError::DuplicateError(s),
-            NetworkMapParseError::SerdeError(e) => RuntimeError::ParseError(e.to_string()),
-            NetworkMapParseError::FileNotFound(p) => RuntimeError::ParseError(p.to_string()),
-            NetworkMapParseError::PathIsDirectory(p) => RuntimeError::PathIsDirectory(p.to_string()),
+            ParseError::IOError(e) => RuntimeError::IOError(e),
+            ParseError::DuplicateError(s) => RuntimeError::DuplicateError(s),
+            ParseError::SerdeJsonError(e) => RuntimeError::ParseError(e.to_string()),
+            ParseError::SerdeTomlError(e) => RuntimeError::ParseError(e.to_string()),
+            ParseError::SerdeYamlError(e) => RuntimeError::ParseError(e.to_string()),
+            ParseError::FileNotFound(p) => RuntimeError::ParseError(p.to_string()),
+            ParseError::PathIsDirectory(p) => RuntimeError::PathIsDirectory(p.to_string()),
         }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl From<toml::ser::Error> for RuntimeError {
+    fn from(value: toml::ser::Error) -> Self {
+        RuntimeError::SerializationError(value)
+    }
+}
+
+impl From<std::io::Error> for RuntimeError {
+    fn from(value: std::io::Error) -> Self {
+        RuntimeError::IOError(value)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl From<serde_json::Error> for RuntimeError {
+    fn from(value: serde_json::Error) -> Self {
+        RuntimeError::ParseError(value.to_string())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl From<toml::de::Error> for RuntimeError {
+    fn from(value: toml::de::Error) -> Self {
+        RuntimeError::ParseError(value.to_string())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl From<serde_yml::Error> for RuntimeError {
+    fn from(value: serde_yml::Error) -> Self {
+        RuntimeError::ParseError(value.to_string())
     }
 }

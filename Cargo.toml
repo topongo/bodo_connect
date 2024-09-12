@@ -1,6 +1,6 @@
 [package]
 name = "bodo_connect"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 description = "A library for mapping/connecting to your hosts in the whole world wide web."
 license = "GPL-3.0"
@@ -9,20 +9,23 @@ repository = "https://github.com/topongo/bodo_connect"
 authors = [ "Lorenzo Bodini" ]
 
 [dependencies]
-subprocess = "0.2.9"
-tokio = "1.27.0"
-reachable = "0.2.2"
-reqwest = { version = "0.11.16" }
-futures = "0.3.27"
-log = { version = "0.4.17", optional = true }
-chrono = { version = "0.4.24" }
-colored = { version = "2.0.0", optional = true }
-lazy_static = { version = "1.4.0", optional = true }
-serde = { version = "1.0.159", features = ["derive"], optional = true }
-serde_json = { version = "1.0.95", optional = true }
-home = { version = "0.5.4", optional = true }
-mac_address = { version = "1.1.3", optional = true }
-clap = { version = "4.2.1", features = ["derive"], optional = true }
+subprocess = "^0.2.9"
+tokio = "^1.27.0"
+reachable = "^0.2.2"
+futures = "^0.3.27"
+reqwest = { version = "^0.11.16" }
+log = { version = "^0.4.17", optional = true }
+chrono = { version = "^0.4.24" }
+colored = { version = "^2.0.0", optional = true }
+lazy_static = { version = "^1.4.0", optional = true }
+serde = { version = "^1.0.159", features = ["derive"], optional = true }
+serde_json = { version = "^1.0.95", optional = true }
+home = { version = "^0.5.4", optional = true }
+mac_address = { version = "^1.1.3", optional = true }
+clap = { version = "^4.2.1", features = ["derive"], optional = true }
+users = { version = "^0.11", optional = true }
+toml = { version = "^0.8.19", optional = true}
+serde_yml = { version = "^0.0.12", optional = true }
 
 [patch.crates-io]
 mac_address = { git = 'https://github.com/topongo/mac_address' }
@@ -30,8 +33,8 @@ mac_address = { git = 'https://github.com/topongo/mac_address' }
 [features]
 default = ["wake", "cmd", "serde", "log", "rsync", "sshfs"]
 wake = ["dep:mac_address"]
-cmd = ["dep:clap", "dep:home", "serde"]
-serde = ["dep:serde", "dep:serde_json"]
+cmd = ["dep:clap", "dep:home", "dep:users", "serde"]
+serde = ["dep:serde", "dep:serde_json", "dep:toml", "dep:serde_yml"]
 log = ["dep:log", "dep:lazy_static", "dep:colored"]
 rsync = ["cmd"]
 sshfs = ["cmd"]

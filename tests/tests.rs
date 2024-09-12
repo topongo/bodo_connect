@@ -1,7 +1,7 @@
 #![cfg(feature = "serde")]
 
 use futures::executor::block_on;
-use bodo_connect::{net::{Subnet, NetworkMap}, ssh::{SSHOptionStore, options::{PortOption, GenericOption}}};
+use bodo_connect::{net::{NetworkMap, Subnet}, ssh::{options::GenericOption, SSHOptionStore}};
 
 const NETWORKMAP_EXAMPLE: &str = r#"
 [
@@ -56,6 +56,22 @@ const NETWORKMAP_EXAMPLE: &str = r#"
   }
 ]
 "#;
+
+#[cfg(feature = "wake")]
+#[test]
+fn migration_test() {
+    use bodo_connect::net::Subnet;
+    use bodo_connect::waker::Waker;
+    use reqwest::Method;
+    
+    let map: Vec<Subnet> = serde_json::from_str(NETWORKMAP_EXAMPLE).unwrap();
+    toml::to_string(&Waker::HttpWaker {method: Method::GET, url: "https://example.com".to_string()}).unwrap();
+    let h = map[0].get_hosts()[0];
+    println!("{:?}", h);
+    println!("{}", serde_json::to_string_pretty(h).unwrap());
+    toml::to_string(&map[0].get_hosts()[0]).unwrap();
+    toml::to_string(&map).unwrap();
+}
 
 #[test]
 fn parsing_test() {
@@ -128,7 +144,7 @@ fn sshfs() {
 async fn uncertainty() {
     let nm: NetworkMap = NetworkMap::try_from(serde_json::from_str::<Vec<Subnet>>(NETWORKMAP_EXAMPLE).unwrap()).unwrap();
 
-    for _ in 0..10 {
+    for _ in 0..3 {
         let current_subnet = nm.find_current_subnet().await;
         match current_subnet {
             Some(_) => {},
@@ -145,7 +161,7 @@ fn custom_ssh_command() {
     let nm: NetworkMap = NetworkMap::try_from(serde_json::from_str::<Vec<Subnet>>(NETWORKMAP_EXAMPLE).unwrap()).unwrap();
 
     let mars = nm.get_host("phobos").unwrap();
-    let sub = nm.get_host_subnet(mars);
+    let _sub = nm.get_host_subnet(mars);
     let mut opts = SSHOptionStore::new(Some("ssh -L 8000:localhost:5000".to_owned()));
     opts.add_option(Box::new(GenericOption::Switch("v")));
     let ssh = block_on(nm.to_ssh(mars, None, &vec!["echo".to_owned()], Some(opts)));

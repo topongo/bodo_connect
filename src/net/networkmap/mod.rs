@@ -2,7 +2,7 @@
 mod parsing;
 
 #[cfg(feature = "serde")]
-pub use parsing::NetworkMapParseError;
+use serde::{ser::SerializeSeq, Deserialize, Serialize};
 
 #[cfg(not(feature = "log"))]
 use crate::{debug, info, warn};
@@ -310,3 +310,31 @@ impl NetworkMap {
         }
     }
 }
+
+#[cfg(feature = "serde")]
+impl Serialize for NetworkMap {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer {
+        let mut ss = serializer.serialize_seq(Some(self.subnets.len()))?;
+        for s in self.subnets.values() {
+            ss.serialize_element(&s)?;
+        }
+        ss.end()
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for NetworkMap {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de> {
+        let mut nm = NetworkMap::default();
+        let s: Vec<Subnet> = Vec::deserialize(deserializer)?;
+        for subnet in s {
+            nm.add_subnet(subnet);
+        }
+        Ok(nm)
+    }
+}
+

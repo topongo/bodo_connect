@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 #[cfg(feature = "serde")]
-use serde::Deserialize;
+use serde::{Deserialize,Serialize};
 use std::net::IpAddr;
 
 use crate::net::Subnet;
@@ -10,7 +10,7 @@ use crate::ssh::options::PortOption;
 #[cfg(feature = "wake")]
 use crate::waker::Waker;
 
-#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[cfg_attr(feature = "serde", derive(Deserialize,Serialize))]
 #[derive(Debug)]
 pub struct Host {
     // identity
@@ -19,9 +19,17 @@ pub struct Host {
     #[cfg_attr(feature = "serde", serde(default = "crate::ssh::default_port"))]
     pub port: u16,
     // if this is not None then the host is a network master
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+        ),
+    )]
     pub eport: Option<u16>,
     pub user: String,
     #[cfg(feature = "wake")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub waker: Option<Waker>,
 }
 

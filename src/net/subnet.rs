@@ -1,18 +1,28 @@
 #![allow(dead_code)]
 
 #[cfg(feature = "serde")]
-use serde::Deserialize;
+use serde::{Deserialize,Serialize,Serializer,Deserializer};
 use std::fmt::{Debug, Formatter};
 use std::net::IpAddr;
 
 use crate::net::Host;
 
-#[cfg_attr(feature = "serde", derive(Deserialize))]
+#[cfg_attr(feature = "serde", derive(Deserialize,Serialize))]
 pub struct Subnet {
     // identity
     pub subdomain: String,
     hosts: Vec<Host>,
+    #[cfg_attr(feature = "serde", serde(
+        serialize_with = "none_filter_ser", 
+        deserialize_with = "none_filter_de",
+        default,
+        skip_serializing_if = "Option::is_none",
+    ))]
     pub eip: Option<IpAddr>,
+}
+
+fn get_none() -> Option<IpAddr> {
+    None
 }
 
 impl Subnet {
@@ -65,3 +75,28 @@ impl PartialEq for Subnet {
         self.subdomain.eq(&other.subdomain)
     }
 }
+
+#[cfg(feature = "serde")]
+fn none_filter_ser<S>(v: &Option<IpAddr>, s: S) -> Result<S::Ok, S::Error> 
+    where S: Serializer
+{
+    match v {
+        Some(ip) => s.serialize_str(&ip.to_string()),
+        None => s.serialize_str(""),
+    }
+}
+
+#[cfg(feature = "serde")]
+fn none_filter_de<'de, D>(deserializer: D) -> Result<Option<IpAddr>, D::Error>
+    where D: Deserializer<'de>
+{
+    let opt: Result<Option<IpAddr>, _> = Option::deserialize(deserializer);
+    match opt {
+        Ok(p) => Ok(p),
+        Err(e) => {
+            println!("{:?}", e);
+            todo!()
+        }
+    }
+}
+

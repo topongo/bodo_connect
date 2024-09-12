@@ -2,20 +2,28 @@ mod runtime_error;
 #[cfg(feature = "sshfs")]
 pub mod sshfs;
 
+use std::path::PathBuf;
+use std::time::{Duration, Instant};
+
 pub use runtime_error::RuntimeError;
 
+use crate::config::Config;
 #[cfg(feature = "log")]
 use crate::logger::CONSOLE_LOGGER;
+#[allow(unused_imports)]
 #[cfg(not(feature = "log"))]
 use crate::{error, warn, info, debug};
+#[allow(unused_imports)]
 #[cfg(feature = "log")]
 use log::{error, warn, info, debug, LevelFilter};
-use clap::Parser;
+use clap::{Parser,CommandFactory};
+use clap::error::{ContextKind, ContextValue, ErrorKind, RichFormatter};
 use subprocess::ExitStatus;
 
-use crate::net::*;
 use crate::ssh::options::GenericOption;
 use crate::ssh::SSHOptionStore;
+use crate::config::{CONFIG_SEARCH_FILE,CONFIG_SEARCH_FOLDER};
+use std::io::Write;
 
 
 #[derive(Parser, Debug)]
@@ -26,8 +34,8 @@ use crate::ssh::SSHOptionStore;
     author = "topongo"
 )]
 pub struct Cmd {
-    #[arg(long, help = "Select different networkmap.json file")]
-    networkmap: Option<String>,
+    #[arg(long, help = "Select different config file")]
+    config: Option<String>,
     #[cfg(feature = "wake")]
     #[arg(short, long, help = "Wake host before connecting")]
     wake: bool,
@@ -55,8 +63,10 @@ pub struct Cmd {
     loop_: bool,
     #[arg(short = 'e', help = "Specify ssh-like command to execute and eventual options.")]
     cmd: Option<String>,
+    #[arg(long, help = "Migrate from json to yaml format")]
+    pub migrate_to_yaml: bool,
     #[arg(help = "Host to connect to")]
-    host: String,
+    host: Option<String>,
     #[arg(
         help = "Extra argument(s), if no -S or -R is used, it will be passed to the remote machine as command",
         allow_hyphen_values = true,
@@ -66,51 +76,66 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    fn empty() -> Result<NetworkMap, RuntimeError> {
-        warn!("cannot find networkmap in the default location, using a empty networkmap");
-        Ok(NetworkMap::default())
-    }
-
-    pub fn read_nm_from_file(&self) -> Result<NetworkMap, RuntimeError> {
-        match &self.networkmap {
-            Some(p) => NetworkMap::try_from(p.clone()).map_err(RuntimeError::from),
+    pub fn search_cfg(&self) -> Vec<String> {
+        let home_dir = match home::home_dir() {
+            Some(h) => h,
             None => {
-                info!("networkmap not specified, using the default location");
-                if let Some(home_dir) = home::home_dir() {
-                    let p = home_dir
-                        .join(".config/bodoConnect/networkmap.json")
-                        .to_str()
-                        .unwrap()
-                        .to_string();
-                    debug!("default location is: {}", p);
-                    NetworkMap::try_from(p).map_err(RuntimeError::from).or_else(|e| {
-                        match e {
-                            RuntimeError::NoSuchFile(..) => {
-                                debug!("not found in `bodoConnect` folde, trying fallback: `bodo_connect`");
-                                let p_fallback = home_dir
-                                    .join(".config/bodoConnect/networkmap.json")
-                                    .to_str()
-                                    .unwrap()
-                                    .to_string();
-                                NetworkMap::try_from(p_fallback).map_err(RuntimeError::from)
-                            },
-                            _ => Err(e)
-                        }
-                    })
-                } else {
-                    error!("cannot get user's home directory");
-                    Cmd::empty()
+                match users::get_current_username() {
+                    Some(u) => {
+                        PathBuf::from("/home").join(u)
+                    }
+                    None => {
+                        return vec![];
+                    }
+                }
+            }
+        };
+
+        let mut results = vec![];
+        for i in CONFIG_SEARCH_FOLDER
+            .iter()
+            .map(|f| home_dir.join(f)) 
+        {
+            if i.exists() {
+                for j in CONFIG_SEARCH_FILE.iter() {
+                    let p = i.join(j);
+                    if p.exists() {
+                        results.push(p.to_str().unwrap().to_owned());
+                    }
                 }
             }
         }
 
-        // debug!("using networkmap file: {}", nm_path);
-        //
-        // match NetworkMap::try_from(nm_path) {
-        //     Ok(n) => Ok(n),
-        //     Err(e) => Err(RuntimeError::from(e)),
-        // }
+        let default = home_dir.join(CONFIG_SEARCH_FOLDER[0]).join(CONFIG_SEARCH_FILE[0]);
+        if results.len() > 0 && default != PathBuf::from(&results[0]) {
+            warn!(
+                "deprecation warning: configuration is not in the default location ({:?})",
+                default
+            )
+        }
+        results
     }
+
+    pub fn load_cfg(&self) -> Result<Config, RuntimeError> {
+        match &self.config {
+            Some(f) => self.cfg_from_file(f),
+            None => {
+                info!("config not specified, searching default locations");
+                let nms = self.search_cfg();
+                debug!("found configurations: {:?}", nms);
+                if nms.len() == 0 {
+                    Err(RuntimeError::ParseError("no networkmap file found.".to_owned()))
+                } else {
+                    debug!("selecting configuration: {:?}", nms[0]);
+                    self.cfg_from_file(&nms[0])
+                }
+            }
+        }
+    }
+
+    pub fn cfg_from_file(&self, file: &str) -> Result<Config, RuntimeError> {
+        Config::try_from(file).map_err(RuntimeError::from)
+   }
 
     pub async fn main(&mut self) -> Result<(), RuntimeError> {
         #[cfg(feature = "log")]
@@ -125,14 +150,21 @@ impl Cmd {
                     _ => LevelFilter::Warn,
                 }
             });
+        } 
+
+        if self.migrate_to_yaml {
+            return self.migrate_config()
         }
 
-        let nm = match self.read_nm_from_file() {
-            Ok(n) => n,
+        let cfg = match self.load_cfg() {
+            Ok(c) => c,
             Err(e) => return Err(e),
         };
 
-        if let Some(target) = nm.get_host(&self.host) {
+        // settings don't exist yet
+        let (nm, _settings) = cfg.split();
+
+        if let Some(target) = nm.get_host(&self.host.clone().unwrap()) {
             let mut extra_options = SSHOptionStore::new(self.cmd.clone());
 
             if self.tty {
@@ -203,15 +235,21 @@ impl Cmd {
             } else {
                 eprintln!("{}", proc);
 
+                let mut connection_start;
                 loop {
+                    connection_start = Instant::now();
                     if let Some(r) = match proc.run(None) {
                         Ok(e) => match e {
                             ExitStatus::Exited(s) => {
                                 if s == 0 {
                                     Some(Ok(()))
                                 } else if self.loop_ {
-                                    warn!("ssh exited with {}", s);
-                                    None
+                                    if s == 255 {
+                                        warn!("ssh exited with {}", s);
+                                        None
+                                    } else {
+                                        Some(Err(RuntimeError::SSHError(s as i32)))
+                                    }
                                 } else {
                                     Some(Err(RuntimeError::SSHError(s as i32)))
                                 }
@@ -224,11 +262,56 @@ impl Cmd {
                         ))),
                     } {
                         return r;
+                    } else {
+                        if connection_start.elapsed().as_millis() < 200 {
+                            tokio::time::sleep(Duration::from_secs(1)).await;
+                        }
                     }
                 }
             }
         } else {
-            Err(RuntimeError::NoSuchHost(self.host.clone()))
+            Err(RuntimeError::NoSuchHost(self.host.clone().unwrap()))
+        }
+    }
+
+    pub fn check_host(&self) {
+        if self.host.is_none() {
+            let mut c = Self::command();
+            let mut err = clap::error::Error::<RichFormatter>::new(ErrorKind::MissingRequiredArgument)
+                .with_cmd(&c);
+
+            err.insert(ContextKind::InvalidArg, ContextValue::Strings(vec!["<HOST>".to_owned()]));
+            err.insert(ContextKind::Usage, ContextValue::StyledStr(c.render_usage()));
+            err.exit();
+        }
+    }
+
+    pub fn migrate_config(&mut self) -> Result<(), RuntimeError> {
+        debug!("migrating config, json -> yaml");
+        debug!("searching for all configuration");
+        let nms = self.search_cfg();
+        for i in &nms {
+            if i.ends_with(".yaml") {
+                info!("found yaml configuration: {:?}", i);
+                warn!("a yaml configuration already exists. exiting.");
+                //return Ok(())
+            }
+        }
+        
+        debug!("configurations found: {:?}", nms);
+        if let Some(f) = nms.iter().filter(|f| f.ends_with(".json")).nth(0) {
+            let cfg = Config::try_from(f.as_str())?;
+            //println!("{}", serde_json::to_string_pretty(&subnets).unwrap());
+            println!("{}", serde_yml::to_string(&cfg).unwrap());
+            let p_out = PathBuf::from(f);
+            let p_out = p_out.parent().unwrap();
+            let f_out = p_out.join("config.yaml");
+            let mut output = std::fs::File::create(&f_out)?;
+            write!(output, "{}", serde_yml::to_string(&cfg)?)?;
+            info!("done creating yaml configuration: {:?}", f_out);
+            Ok(())
+        } else {
+            Err(RuntimeError::ParseError("no networkmap configuration found".to_owned()))
         }
     }
 }
