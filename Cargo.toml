@@ -1,6 +1,6 @@
 [package]
 name = "bodo_connect"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 description = "A library for mapping/connecting to your hosts in the whole world wide web."
 license = "GPL-3.0"
@@ -27,9 +27,6 @@ users = { version = "^0.11", optional = true }
 toml = { version = "^0.8.19", optional = true}
 serde_yml = { version = "^0.0.12", optional = true }
 
-[patch.crates-io]
-mac_address = { git = 'https://github.com/topongo/mac_address' }
-
 [features]
 default = ["wake", "cmd", "serde", "log", "rsync", "sshfs"]
 wake = ["dep:mac_address"]
@@ -43,3 +40,5 @@ sshfs = ["cmd"]
 name = "bodoConnect"
 required-features = ["cmd", "serde"]
 path = "src/bin/main.rs"
+
+

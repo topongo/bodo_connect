@@ -1,0 +1,58 @@
+FROM archlinux:latest
+
+# Install dependencies
+RUN pacman -Sy --noconfirm base-devel git rustup
+
+# Install aur dependencies 
+RUN mkdir /aur
+RUN useradd --no-create-home --shell=/bin/false build && usermod -L build
+RUN echo "build ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+RUN chown build:build /aur
+
+USER build
+ARG AUR_PKGS=android-ndk 
+RUN for pkg in $AUR_PKGS; do \
+      git clone https://aur.archlinux.org/$pkg.git /aur/$pkg; \
+      cd /aur/$pkg; \
+      makepkg -si --noconfirm; \
+      cd /; \
+      rm -rf /aur/$pkg; \
+    done
+USER root
+
+ENV ANDROID_NDK_ROOT=/opt/android-ndk
+ENV PATH=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+
+ARG OPENSSL_ARCH=android-arm64
+ARG OPENSSL_ANDROID_API=
+ARG OPENSSL_VERSION=openssl-3.3.2
+ARG CARGO_BUILD_TARGET=aarch64-linux-android
+ARG OPENSSL_CONFIGURE_EXTRA=
+
+# Build OpenSSL for android
+RUN git clone --depth 1 --branch ${OPENSSL_VERSION} https://github.com/openssl/openssl /openssl
+WORKDIR /openssl 
+RUN if [ -z "$OPENSSL_ANDROID_API" ]; then \
+      ./Configure $OPENSSL_ARCH $OPENSSL_CONFIGURE_EXTRA; \
+    else \
+      ./Configure $OPENSSL_ANDROID_ARCH -D__ANDROID_API__=$OPENSSL_ANDROID_API; \
+    fi
+RUN make -j$(nproc)
+
+WORKDIR /src
+
+RUN userdel build
+RUN useradd --home-dir /home/user --uid 1000 --user-group --create-home --shell /bin/sh user
+RUN chown -R user:user /home/user /src
+
+USER user
+
+# Prepare rustup for android
+RUN rustup toolchain install nightly
+RUN rustup target add ${CARGO_BUILD_TARGET}
+
+ENV OPENSSL_INCLUDE_DIR=/openssl/include
+ENV OPENSSL_LIB_DIR=/openssl
+ENV OPENSSL_STATIC=1
+ENV CARGO_BUILD_TARGET=${CARGO_BUILD_TARGET}
+RUN ["/bin/sh"]

@@ -45,7 +45,7 @@ pub struct Cmd {
     #[arg(short, action = clap::ArgAction::Count, help = "Set verbosity level")]
     debug: u8,
     #[cfg(feature = "log")]
-    #[arg(short, long, help = "Don't log anything")]
+    #[arg(short, long, help = "Don't log anything, suppress generated command echoing")]
     quiet: bool,
     #[arg(
         short = 'n',
@@ -230,10 +230,14 @@ impl Cmd {
             }
 
             if self.dry {
-                println!("{}", proc);
+                if !self.quiet {
+                    println!("{}", proc);
+                }
                 Ok(())
             } else {
-                eprintln!("{}", proc);
+                if !self.quiet {
+                    eprintln!("{}", proc);
+                }
 
                 let mut connection_start;
                 loop {
