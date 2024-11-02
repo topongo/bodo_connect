@@ -25,7 +25,6 @@ use crate::ssh::SSHOptionStore;
 use crate::config::{CONFIG_SEARCH_FILE,CONFIG_SEARCH_FOLDER};
 use std::io::Write;
 
-
 #[derive(Parser, Debug)]
 #[command(
     name = "bodoConnect",
@@ -107,7 +106,7 @@ impl Cmd {
         }
 
         let default = home_dir.join(CONFIG_SEARCH_FOLDER[0]).join(CONFIG_SEARCH_FILE[0]);
-        if results.len() > 0 && default != PathBuf::from(&results[0]) {
+        if results.is_empty() && default != PathBuf::from(&results[0]) {
             warn!(
                 "deprecation warning: configuration is not in the default location ({:?})",
                 default
@@ -123,7 +122,7 @@ impl Cmd {
                 info!("config not specified, searching default locations");
                 let nms = self.search_cfg();
                 debug!("found configurations: {:?}", nms);
-                if nms.len() == 0 {
+                if nms.is_empty() {
                     Err(RuntimeError::ParseError("no networkmap file found.".to_owned()))
                 } else {
                     debug!("selecting configuration: {:?}", nms[0]);
@@ -211,7 +210,7 @@ impl Cmd {
                     }
                 }
             } else {
-                nm.to_ssh(target, current_subnet, &mut self.extra, Some(extra_options)).await
+                nm.to_ssh(target, current_subnet, &self.extra, Some(extra_options)).await
             };
 
             #[cfg(not(feature = "sshfs"))]
@@ -266,10 +265,8 @@ impl Cmd {
                         ))),
                     } {
                         return r;
-                    } else {
-                        if connection_start.elapsed().as_millis() < 200 {
-                            tokio::time::sleep(Duration::from_secs(1)).await;
-                        }
+                    } else if connection_start.elapsed().as_millis() < 200 {
+                        tokio::time::sleep(Duration::from_secs(1)).await;
                     }
                 }
             }
@@ -305,8 +302,6 @@ impl Cmd {
         debug!("configurations found: {:?}", nms);
         if let Some(f) = nms.iter().filter(|f| f.ends_with(".json")).nth(0) {
             let cfg = Config::try_from(f.as_str())?;
-            //println!("{}", serde_json::to_string_pretty(&subnets).unwrap());
-            println!("{}", serde_yml::to_string(&cfg).unwrap());
             let p_out = PathBuf::from(f);
             let p_out = p_out.parent().unwrap();
             let f_out = p_out.join("config.yaml");

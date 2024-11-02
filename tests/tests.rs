@@ -1,5 +1,7 @@
 #![cfg(feature = "serde")]
 
+use std::collections::HashSet;
+
 use futures::executor::block_on;
 use bodo_connect::{net::{NetworkMap, Subnet}, ssh::{options::GenericOption, SSHOptionStore}};
 
@@ -118,6 +120,7 @@ fn parsing_test() {
         IpAddr::from_str("10.8.5.2").unwrap(),
         5,
         None,
+        HashSet::new(),
         #[cfg(feature = "wake")]
         Some(Waker::HttpWaker {method: Method::GET, url: "https://example.com".to_string()})
     ));
@@ -126,7 +129,7 @@ fn parsing_test() {
     assert_eq!(block_on(nm.to_ssh(
         nm.get_host("x").unwrap(),
         None,
-        &vec!["rm".to_owned(), "-rf".to_owned(), "/".to_owned()],
+        &["rm".to_owned(), "-rf".to_owned(), "/".to_owned()],
         None
     )).to_string(), "ssh -J martian@mars.orbit:23 -p 5 x@10.8.5.2 rm -rf /");
 }
@@ -146,12 +149,8 @@ async fn uncertainty() {
 
     for _ in 0..3 {
         let current_subnet = nm.find_current_subnet().await;
-        match current_subnet {
-            Some(_) => {},
-            None => {}
-        }
 
-        let proc = nm.to_ssh(nm.get_host("mars").unwrap(), current_subnet, &vec!["echo".to_owned()], None).await;
+        let proc = nm.to_ssh(nm.get_host("mars").unwrap(), current_subnet, &["echo".to_owned()], None).await;
         assert_eq!(proc.to_string(), "ssh martian@example.com echo");
     }
 }

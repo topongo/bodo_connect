@@ -27,9 +27,22 @@ impl TryFrom<Vec<Subnet>> for NetworkMap {
     fn try_from(value: Vec<Subnet>) -> Result<Self, Self::Error> {
         let mut n = NetworkMap::default();
         let mut subs = HashSet::new();
+        let mut host_aliases: HashSet<String> = HashSet::new();
         for s in value.into_iter() {
             if subs.contains(&s.subdomain) {
                 return Err(ParseError::from(s.subdomain));
+            }
+            for h in s.get_hosts() {
+                if host_aliases.contains(&h.name) {
+                    return Err(ParseError::from(h.name.clone()));
+                }
+                host_aliases.insert(h.name.clone());
+                for a in h.aliases.iter() {
+                    if host_aliases.contains(a) {
+                        return Err(ParseError::from(a.clone()));
+                    }
+                    host_aliases.insert(a.clone());
+                }
             }
             subs.insert(s.subdomain.clone());
             n.add_subnet(s);

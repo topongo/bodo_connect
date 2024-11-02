@@ -14,7 +14,10 @@ Or build it simply by cloning this repo using cargo:
 git clone https://github.com/topongo/bodo_connect
 cd bodo_connect
 cargo build --release
+# execute it directly
 target/release/bodoConnect
+# or install it with cargo
+cargo install --path .
 ```
 
 ### *NB*
@@ -22,7 +25,7 @@ For legacy reasons, the binary for this crate is named `bodoConnect` and not `bo
 
 ## Features
 * **cmd**: (required for binary) actual binary in action
-* **serde**: (required for binary) parse networkmap from json file
+* **serde**: (required for binary) parse config file, json, yaml and toml are currently supported
 * **log**: enable logging (it doesn't automatically set to level Debug, it must be manually done if the **cmd** feature is off)
 * **wake**: enable waking hosts by either making a GET request or executing the `wol` command on the master host of the target network.
 

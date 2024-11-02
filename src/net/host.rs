@@ -2,6 +2,7 @@
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize,Serialize};
+use std::collections::HashSet;
 use std::net::IpAddr;
 
 use crate::net::Subnet;
@@ -15,6 +16,8 @@ use crate::waker::Waker;
 pub struct Host {
     // identity
     pub name: String,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub aliases: HashSet<String>,
     pub ip: IpAddr,
     #[cfg_attr(feature = "serde", serde(default = "crate::ssh::default_port"))]
     pub port: u16,
@@ -40,6 +43,7 @@ impl Host {
         ip: IpAddr,
         port: u16,
         eport: Option<u16>,
+        aliases: HashSet<String>,
         #[cfg(feature = "wake")] waker: Option<Waker>,
     ) -> Self {
         Self {
@@ -48,6 +52,7 @@ impl Host {
             port,
             eport,
             user,
+            aliases,
             #[cfg(feature = "wake")]
             waker,
         }

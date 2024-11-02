@@ -42,7 +42,7 @@ impl RuntimeError {
             RuntimeError::SSHError(e) => error!("ssh exited with code {}", e),
             RuntimeError::SSHUnknownError => error!("unknown ssh error"),
             RuntimeError::SpawnError(s, e) => error!("cannot spawn ssh command `{}`: {}", s, e),
-            RuntimeError::NoSuchHost(h) => error!("no such host: {}", h),
+            RuntimeError::NoSuchHost(h) => error!("no such host or alias: {}", h),
             RuntimeError::UnknownError(b) => error!("unkwnown error: {}", b.to_string()),
             RuntimeError::UnknownUnrepresentableError => error!("unkwnown error"),
             #[cfg(feature = "sshfs")]

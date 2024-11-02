@@ -39,7 +39,7 @@ impl Subnet {
     }
 
     pub fn get_host(&self, q: &str) -> Option<&Host> {
-        self.hosts.iter().find(|h| h.name == q)
+        self.hosts.iter().find(|h| h.name == q || h.aliases.contains(q))
     }
 
     pub fn get_hosts(&self) -> Vec<&Host> {

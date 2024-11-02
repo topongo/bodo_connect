@@ -29,7 +29,7 @@ impl<'a> TryFrom<&'a str> for Config {
     type Error = ParseError; 
 
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
-        let content = read_to_string(&value)?;
+        let content = read_to_string(value)?;
         if value.ends_with(".yml") || value.ends_with(".yaml") {
             Ok(serde_yml::from_str(&content)?)
         } else if value.ends_with(".toml") {
@@ -61,11 +61,11 @@ impl TryFrom<String> for Config {
     }
 }
 
-pub static CONFIG_SEARCH_FOLDER: [&'static str; 2] = [
+pub static CONFIG_SEARCH_FOLDER: [&str; 2] = [
     ".config/bodo_connect",
     ".config/bodoConnect"
 ];
-pub static CONFIG_SEARCH_FILE: [&'static str; 4] = [
+pub static CONFIG_SEARCH_FILE: [&str; 4] = [
     "config.yaml",
     "config.json",
     "config.toml",
