@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: Build with Docker
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - '*'
 
 jobs:
-  build:
+  build_docker_image:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,9 +25,12 @@ jobs:
 
     - name: Build docker image
       run: |
-        docker buildx build --cache-from=type=local,src=/tmp/.buildx-cache --cache-to=type=local,dest=/tmp/.buildx-cache --tag cargo-static-openssl-aarch64-linux-android:latest .
+        docker buildx build --file Dockerfile.android --cache-from=type=local,src=/tmp/.buildx-cache --cache-to=type=local,dest=/tmp/.buildx-cache --tag cargo-static-openssl-aarch64-linux-android:latest .
 
     - name: List docker images
       run: |
         docker images
+
+  # build_android_bin:
+  #   
     
