@@ -8,6 +8,8 @@ on:
 
 jobs:
   build_docker_image:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
 
     steps:
