@@ -52,6 +52,8 @@ RUN chown -R user:user /home/user /src
 USER user
 
 # Prepare rustup for android
+RUN mkdir -p /home/user/.cargo
+COPY --chown=user:user .cargo/config.toml /home/user/.cargo/config.toml
 RUN rustup toolchain install nightly
 RUN rustup target add ${CARGO_BUILD_TARGET}
 
