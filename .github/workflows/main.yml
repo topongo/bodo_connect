@@ -20,7 +20,11 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref_name }}
       run: |
-        gh release create "$tag" \
+        mkdir dist
+        for i in aarch64-linux-android; do
+          mv target/$i/release/bodoConnect dist/bodoConnect.$i
+        done
+        gh release create "$tag" ./dist/* \
             --repo="$GITHUB_REPOSITORY" \
             --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
             --generate-notes --draft
