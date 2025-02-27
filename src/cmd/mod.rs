@@ -43,7 +43,6 @@ pub struct Cmd {
     #[cfg(feature = "log")]
     #[arg(short, action = clap::ArgAction::Count, help = "Set verbosity level")]
     debug: u8,
-    #[cfg(feature = "log")]
     #[arg(short, long, help = "Don't log anything, suppress generated command echoing")]
     quiet: bool,
     #[arg(
