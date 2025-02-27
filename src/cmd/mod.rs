@@ -104,7 +104,7 @@ impl Cmd {
             }
         }
 
-        let default = home_dir.join(CONFIG_SEARCH_FOLDER[0]).join(CONFIG_SEARCH_FILE[0]);
+        let default = Config::default_path(Some(home_dir));
         if results.is_empty() && default != PathBuf::from(&results[0]) {
             warn!(
                 "deprecation warning: configuration is not in the default location ({:?})",

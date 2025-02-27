@@ -5,6 +5,7 @@ use {
     std::fs::read_to_string,
 };
 use crate::net::NetworkMap;
+use std::path::PathBuf;
 
 #[cfg_attr(feature = "serde", derive(Serialize,Deserialize))]
 #[derive(Debug,Default)]
@@ -16,6 +17,13 @@ pub struct Config {
 impl Config {
     pub fn split(self) -> (NetworkMap, Settings) {
         (self.networkmap, self.settings)
+    }
+
+    pub fn default_path(base: Option<PathBuf>) -> PathBuf {
+        base
+            .unwrap_or(PathBuf::new())
+            .join(CONFIG_SEARCH_FOLDER[0])
+            .join(CONFIG_SEARCH_FILE[0])
     }
 }
 
