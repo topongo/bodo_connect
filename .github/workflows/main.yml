@@ -2,8 +2,8 @@ name: Build with Docker
 
 on:
   push:
-    # tags:
-    #   - '*'
+    tags:
+      - '*'
   workflow_dispatch:
 
 jobs:
