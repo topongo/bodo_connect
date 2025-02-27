@@ -240,7 +240,7 @@ impl Cmd {
                 let mut connection_start;
                 loop {
                     connection_start = Instant::now();
-                    if let Some(r) = match proc.run(None) {
+                    if let Some(r) = match proc.run() {
                         Ok(e) => match e {
                             ExitStatus::Exited(s) => {
                                 if s == 0 {

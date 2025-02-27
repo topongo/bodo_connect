@@ -6,45 +6,40 @@ use crate::debug;
 use log::debug;
 use std::fmt::{Display, Formatter};
 
-use subprocess::{ExitStatus, Popen, PopenConfig, PopenError, Redirection};
+use subprocess::{Exec, ExitStatus, PopenError, Redirection};
 
 pub trait Process {
     fn get_args(&self) -> Vec<String>;
 
-    fn run(&mut self, opts: Option<PopenConfig>) -> Result<ExitStatus, PopenError> {
-        debug!("spawning new ssh process");
-        match Popen::create(
-            &self.get_args(),
-            match opts {
-                Some(x) => x,
-                None => PopenConfig::default(),
-            },
-        ) {
-            Ok(mut p) => {
-                debug!("waiting for ssh process to exit");
+    fn exec(&self) -> Exec {
+        let args = self.get_args();
+        Exec::cmd("ssh")
+            // skip first argument of args if it's not empty
+            .args(if args.is_empty() { &[] } else { &args[1..] })
+    }
+    
+    fn run(&mut self) -> Result<ExitStatus, PopenError> {
+        debug!("spawning new process");
+        let exec = self.exec();
+        self.inner_run(exec)
+    }
 
-                #[cfg(feature = "log")]
-                {
-                    let o = p.wait();
-                    match &o {
-                        Ok(e) => debug!("ssh process exited successfully with {:?}", e),
-                        Err(e) => debug!("ssh process failed with {:?}", e)
-                    }
-                    o
-                }
-                #[cfg(not(feature = "log"))]
-                p.wait()
-            }
-            Err(e) => Err(e),
+    fn inner_run(&self, exec: Exec) -> Result<ExitStatus, PopenError> {
+        debug!("waiting for process to exit");
+        let r = exec.join();
+        #[cfg(feature = "log")]
+        match r {
+            Ok(ref e) => debug!("process exited successfully with {:?}", e),
+            Err(ref e) => debug!("process failed with {:?}", e)
         }
+        r
     }
 
     fn run_stdout_to_stderr(&mut self) -> Result<ExitStatus, PopenError> {
         debug!("passing redirecting options to ssh process");
-        self.run(Some(PopenConfig {
-            stdout: Redirection::Merge,
-            ..PopenConfig::default()
-        }))
+        let exec = self.exec()
+            .stdout(Redirection::Merge);
+        self.inner_run(exec)
     }
 }
 
