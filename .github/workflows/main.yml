@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: Build with Docker
 
 on:
   push:
@@ -7,28 +7,32 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build_docker_image:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Set up docker buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Cache docker layers
-      uses: actions/cache@v4
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-
-
-    - name: Build docker image
+    - name: Build using docker
       run: |
-        docker buildx build --cache-from=type=local,src=/tmp/.buildx-cache --cache-to=type=local,dest=/tmp/.buildx-cache --tag cargo-static-openssl-aarch64-linux-android:latest .
-
-    - name: List docker images
+        docker run --rm -v .:/src -u root topongo/rust-android-openssl:latest cargo build --release
+    - name: Create release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        tag: ${{ github.ref_name }}
       run: |
-        docker images
+        mkdir dist
+        for i in aarch64-linux-android; do
+          cp target/$i/release/bodoConnect dist/bodoConnect.$i
+        done
+        gh release create "$tag" ./dist/* \
+            --repo="$GITHUB_REPOSITORY" \
+            --title="${GITHUB_REPOSITORY#*/} ${tag#v}" \
+            --generate-notes --draft
+
+        
+
+  # build_android_bin:
+  #   
     
