@@ -323,8 +323,8 @@ impl NetworkMap {
         output.push(command
             .iter()
             .map(|s| if s.contains(' ') { format!("'{}'", s) } else { s.to_owned() })
-            .intersperse(" ".to_owned())
-            .collect::<String>()
+            .collect::<Vec<String>>()
+            .join(" ")
         );
         debug!("generated command: {:?}", output);
 

@@ -1,4 +1,3 @@
-#![feature(iter_intersperse)]
 #[cfg(feature = "cmd")]
 pub mod cmd;
 pub mod config;
