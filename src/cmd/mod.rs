@@ -295,7 +295,7 @@ impl Cmd {
             if i.ends_with(".yaml") {
                 info!("found yaml configuration: {:?}", i);
                 warn!("a yaml configuration already exists. exiting.");
-                //return Ok(())
+                return Ok(())
             }
         }
         
