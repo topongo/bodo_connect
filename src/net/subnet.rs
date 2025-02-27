@@ -56,6 +56,11 @@ impl Subnet {
     pub fn has_host(&self, h: &Host) -> bool {
         self.hosts.contains(h)
     }
+
+    #[cfg(feature = "sync")]
+    pub fn get_sync_host(&self) -> Option<&Host> {
+        self.hosts.iter().find(|h| h.sync.is_some_and(|s| s))
+    }
 }
 
 impl Debug for Subnet {

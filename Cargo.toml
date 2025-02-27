@@ -28,13 +28,14 @@ toml = { version = "^0.8.19", optional = true}
 serde_yml = { version = "^0.0.12", optional = true }
 
 [features]
-default = ["wake", "cmd", "serde", "log", "rsync", "sshfs"]
+default = ["wake", "cmd", "serde", "log", "rsync", "sshfs", "sync"]
 wake = ["dep:mac_address"]
 cmd = ["dep:clap", "dep:home", "dep:users", "serde"]
 serde = ["dep:serde", "dep:serde_json", "dep:toml", "dep:serde_yml"]
 log = ["dep:log", "dep:lazy_static", "dep:colored"]
 rsync = ["cmd"]
 sshfs = ["cmd"]
+sync = ["cmd"]
 
 [[bin]]
 name = "bodoConnect"

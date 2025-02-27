@@ -8,6 +8,11 @@ use clap::Parser;
 #[tokio::main]
 async fn main() {
     let mut cmd = cmd::Cmd::parse();
+    #[cfg(feature = "sync")]
+    if !(cmd.migrate_to_yaml || cmd.pull_config || cmd.push_config) {
+        cmd.check_host();
+    }
+    #[cfg(not(feature = "sync"))]
     if !cmd.migrate_to_yaml {
         cmd.check_host();
     }

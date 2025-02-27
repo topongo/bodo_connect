@@ -27,6 +27,8 @@ pub enum RuntimeError {
     MigrationError(Box<RuntimeError>),
     UnknownError(Box<dyn Printable>),
     SerializationError(toml::ser::Error),
+    #[cfg(feature = "sync")]
+    SyncError(String),
     UnknownUnrepresentableError
 }
 
@@ -59,6 +61,10 @@ impl RuntimeError {
             RuntimeError::SerializationError(e) => {
                 error!("serialization error: {}: {:?}", e, e);
             }
+            #[cfg(feature = "sync")]
+            RuntimeError::SyncError(e) => {
+                error!("sync error: {}", e);
+            }
         }
     }
 
@@ -81,6 +87,8 @@ impl RuntimeError {
             RuntimeError::TooFewArguments => 9,
             RuntimeError::MigrationError(..) => 10,
             RuntimeError::SerializationError(..) => 11,
+            #[cfg(feature = "sync")]
+            RuntimeError::SyncError(..) => 12,
         }
     }
 }

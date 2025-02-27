@@ -34,6 +34,9 @@ pub struct Host {
     #[cfg(feature = "wake")]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub waker: Option<Waker>,
+    #[cfg(feature = "sync")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub sync: Option<bool>,
 }
 
 impl Host {
@@ -45,6 +48,7 @@ impl Host {
         eport: Option<u16>,
         aliases: HashSet<String>,
         #[cfg(feature = "wake")] waker: Option<Waker>,
+        #[cfg(feature = "sync")] sync: Option<bool>,
     ) -> Self {
         Self {
             name,
@@ -55,6 +59,8 @@ impl Host {
             aliases,
             #[cfg(feature = "wake")]
             waker,
+            #[cfg(feature = "sync")]
+            sync,
         }
     }
 

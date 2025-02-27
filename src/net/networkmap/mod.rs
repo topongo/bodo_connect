@@ -199,6 +199,13 @@ impl NetworkMap {
         options
     }
 
+    #[cfg(feature = "sync")]
+    pub fn get_sync_host(&self) -> Option<&Host> {
+        self.subnets
+            .values()
+            .find_map(|s| s.get_sync_host())
+    }
+
     #[cfg(feature = "sshfs")]
     pub async fn to_sshfs(
         &self,
@@ -221,6 +228,41 @@ impl NetworkMap {
                 None
             )
         ))
+    }
+
+    #[cfg(feature = "sync")]
+    pub async fn to_ssh_sync(
+        &self,
+        target: &Host,
+        subnet: Option<&Subnet>,
+        push: bool,
+    ) -> Box<dyn Process> {
+        debug!("generating route to target");
+        let (target_id, route) = self.hops_gen(target, subnet).await;
+        info!("route generated: {}", join_hops(&target_id, &route, " -> "));
+
+        let mut command = vec!["ssh".to_owned()];
+        command.append(&mut NetworkMap::gen_ssh_options(
+            route,
+            target.port_option(),
+            None
+        ).args_gen());
+        command.push(target_id.to_string());
+
+        #[cfg(debug_assertions)]
+        let remote_config = "/tmp/bdc.yaml".to_owned();
+        #[cfg(not(debug_assertions))]
+        let remote_config = Config::default_path(None).to_string_lossy().to_owned();
+        
+        if push {
+            command.append(&mut vec!["cat".to_owned(), ">".to_owned(), remote_config]);
+        } else {
+            command.append(&mut vec!["cat".to_owned(), remote_config])
+        }
+
+        debug!("command so far: {:?}", command);
+
+        Box::new(SSHProcess::new(command))
     }
 
     pub async fn to_ssh(

@@ -63,6 +63,12 @@ pub struct Cmd {
     cmd: Option<String>,
     #[arg(long, help = "Migrate from json to yaml format")]
     pub migrate_to_yaml: bool,
+    #[cfg(feature = "sync")]
+    #[arg(long, help = "Push loaded configuration with host marked as `sync`. Implies -n")]
+    pub push_config: bool,
+    #[cfg(feature = "sync")]
+    #[arg(long, help = "Pull configuration to disk. Overwrites existing config! Argument --config will be considered")]
+    pub pull_config: bool,
     #[arg(help = "Host to connect to")]
     host: Option<String>,
     #[arg(
@@ -152,6 +158,15 @@ impl Cmd {
 
         if self.migrate_to_yaml {
             return self.migrate_config()
+        }
+
+        #[cfg(feature = "sync")]
+        if self.pull_config || self.push_config {
+            if self.pull_config && self.push_config {
+                return Err(RuntimeError::SyncError("pull and push cannot be used together".to_owned()));
+            } else {
+                return self.sync_config().await;
+            }
         }
 
         let cfg = match self.load_cfg() {
@@ -310,6 +325,82 @@ impl Cmd {
             Ok(())
         } else {
             Err(RuntimeError::ParseError("no networkmap configuration found".to_owned()))
+        }
+    }
+
+    #[cfg(feature = "sync")]
+    pub async fn sync_config(&mut self) -> Result<(), RuntimeError> {
+
+        debug_assert!(self.pull_config || self.push_config);
+        
+        // let mut proc = nm.to_ssh(target, subnet, command, extra_options)
+        let nm = self.load_cfg()?.networkmap;
+        let target = nm.get_sync_host().ok_or(RuntimeError::SyncError("no sync host has been set".to_owned()))?;
+        let push = if self.push_config {
+            // load config
+            Some(self.load_cfg()?)
+        } else {
+            None
+        };
+        let proc = nm.to_ssh_sync(target, None, push.is_some()).await;
+        match push {
+            Some(c) => {
+                let captured = proc 
+                    .exec()
+                    .stdin(serde_yml::to_string(&c).unwrap().as_str())
+                    .capture();
+                
+                match captured {
+                    Ok(e) => {
+                        if e.success() {
+                            info!("configuration pushed successfully");
+                            Ok(())
+                        } else {
+                            Err(RuntimeError::SyncError("configuration push failed".to_owned()))
+                        }
+                    }
+                    Err(e) => {
+                        Err(RuntimeError::SpawnError(proc.to_string(), e.to_string()))
+                    }
+                }
+            }
+            None => {
+                let output = proc
+                    .exec()
+                    .stdout(subprocess::Redirection::Pipe)
+                    .capture()
+                    .map_err(|e| RuntimeError::SpawnError(proc.to_string(), e.to_string()))?;
+                let output = if output.success() {
+                    output.stdout_str()
+                } else {
+                    return Err(RuntimeError::SyncError("configuration pull failed".to_owned()));
+                };
+                let c: Config = serde_yml::from_str(&output)?;
+                #[cfg(debug_assertions)]
+                debug!("configuration pulled: {:?}", c);
+                #[cfg(not(debug_assertions))]
+                {
+                    let target = self.config
+                        .as_ref()
+                        .map(PathBuf::from)
+                        .unwrap_or(Config::default_path(Some(home::home_dir().ok_or(RuntimeError::NoSuchFile("couldn't determine home directory".to_owned()))?)));
+                    debug!("target file is {:?}", target);
+                    if let Some(p) = target.parent() {
+                        if !p.exists() {
+                            std::fs::create_dir_all(p)?;
+                        }
+                    }
+                    let mut output = std::fs::File::create(&target)?;
+                    write!(output, "{}", serde_yml::to_string(&c)?)?;
+                }
+                #[cfg(debug_assertions)]
+                {
+                    warn!("not writing to disk: not in release mode");
+                    println!("{}", serde_yml::to_string(&c)?);
+                }
+                info!("successfully pulled configuration");
+                Ok(())
+            }
         }
     }
 }
