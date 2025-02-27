@@ -287,7 +287,10 @@ impl NetworkMap {
         #[cfg(debug_assertions)]
         let remote_config = "/tmp/bdc.yaml".to_owned();
         #[cfg(not(debug_assertions))]
-        let remote_config = Config::default_path(None).to_string_lossy().to_owned();
+        let remote_config = {
+            use crate::config::Config;
+            Config::default_path(None).to_string_lossy().to_string()
+        };
         
         if push {
             command.append(&mut vec!["cat".to_owned(), ">".to_owned(), remote_config]);
