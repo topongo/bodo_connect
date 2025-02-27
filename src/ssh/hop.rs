@@ -30,7 +30,7 @@ impl Display for Hop {
 }
 
 
-pub fn join_hops(t: &Hop, v: &Vec<Hop>, sep: &str) -> String {
+pub fn join_hops(t: &Hop, v: &[Hop], sep: &str) -> String {
     if v.is_empty() {
         format!(
             "client -> {}",

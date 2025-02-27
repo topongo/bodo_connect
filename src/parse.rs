@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::config::ConfigError;
 
 #[derive(Debug)]
@@ -10,9 +12,9 @@ pub struct DirPath {
     inner: String
 }
 
-impl ToString for NotFoundPath {
-    fn to_string(&self) -> String {
-        self.inner.clone()
+impl Display for NotFoundPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.inner)
     }
 }
 
@@ -22,9 +24,9 @@ impl From<String> for NotFoundPath {
     }
 }
 
-impl ToString for DirPath {
-    fn to_string(&self) -> String {
-        self.inner.clone()
+impl Display for DirPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.inner)
     }
 }
 

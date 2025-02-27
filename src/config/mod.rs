@@ -42,7 +42,7 @@ impl Config {
 
     pub fn default_path(base: Option<PathBuf>) -> PathBuf {
         base
-            .unwrap_or(PathBuf::new())
+            .unwrap_or_default()
             .join(CONFIG_SEARCH_FOLDER[0])
             .join(CONFIG_SEARCH_FILE[0])
     }

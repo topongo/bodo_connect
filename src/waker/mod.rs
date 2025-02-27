@@ -43,7 +43,7 @@ pub fn method_serializer<S>(m: &Method, serializer: S) -> Result<S::Ok, S::Error
 where
     S: Serializer,
 {
-    serializer.serialize_str(&m.to_string())
+    serializer.serialize_str(m.as_ref())
 }
 
 #[cfg(feature = "serde")]
