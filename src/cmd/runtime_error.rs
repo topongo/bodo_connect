@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
+use crate::config::ConfigError;
 #[cfg(not(feature = "log"))]
 use crate::error;
 #[cfg(feature = "log")]
@@ -27,6 +28,7 @@ pub enum RuntimeError {
     MigrationError(Box<RuntimeError>),
     UnknownError(Box<dyn Printable>),
     SerializationError(toml::ser::Error),
+    ConfigError(ConfigError),
     #[cfg(feature = "sync")]
     SyncError(String),
     UnknownUnrepresentableError
@@ -45,6 +47,7 @@ impl RuntimeError {
             RuntimeError::SSHUnknownError => error!("unknown ssh error"),
             RuntimeError::SpawnError(s, e) => error!("cannot spawn ssh command `{}`: {}", s, e),
             RuntimeError::NoSuchHost(h) => error!("no such host or alias: {}", h),
+            RuntimeError::ConfigError(e) => error!("configuration error: {}", e),
             RuntimeError::UnknownError(b) => error!("unkwnown error: {}", b.to_string()),
             RuntimeError::UnknownUnrepresentableError => error!("unkwnown error"),
             #[cfg(feature = "sshfs")]
@@ -89,6 +92,7 @@ impl RuntimeError {
             RuntimeError::SerializationError(..) => 11,
             #[cfg(feature = "sync")]
             RuntimeError::SyncError(..) => 12,
+            RuntimeError::ConfigError(..) => 13,
         }
     }
 }
@@ -111,6 +115,7 @@ impl From<ParseError> for RuntimeError {
             ParseError::SerdeYamlError(e) => RuntimeError::ParseError(e.to_string()),
             ParseError::FileNotFound(p) => RuntimeError::ParseError(p.to_string()),
             ParseError::PathIsDirectory(p) => RuntimeError::PathIsDirectory(p.to_string()),
+            ParseError::ConfigError(e) => RuntimeError::ConfigError(e),
         }
     }
 }
@@ -146,5 +151,11 @@ impl From<toml::de::Error> for RuntimeError {
 impl From<serde_yml::Error> for RuntimeError {
     fn from(value: serde_yml::Error) -> Self {
         RuntimeError::ParseError(value.to_string())
+    }
+}
+
+impl From<ConfigError> for RuntimeError {
+    fn from(value: ConfigError) -> Self {
+        RuntimeError::ConfigError(value)
     }
 }

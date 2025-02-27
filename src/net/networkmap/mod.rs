@@ -10,7 +10,8 @@ use crate::net::external_ip::get_ip;
 #[cfg(feature = "log")]
 use log::{debug, info, warn};
 use reachable::{IcmpTarget, ResolvePolicy, Status, Target, TcpTarget};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::fmt::Display;
 use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::time::Duration;
 #[cfg(feature = "wake")]
@@ -51,6 +52,40 @@ impl NetworkMap {
             }
         }
         None
+    }
+
+    pub fn check(&self) -> Result<(), NetworkMapError> {
+        let mut subs = HashSet::new();
+        let mut host_aliases: HashSet<String> = HashSet::new();
+        #[cfg(feature = "sync")]
+        let mut sync = vec![];
+        for (_, s) in self.subnets.iter() {
+            if subs.contains(&s.subdomain) {
+                return Err(NetworkMapError::DuplicateSubnet(s.subdomain.clone()));
+            }
+            for h in s.get_hosts() {
+                if host_aliases.contains(&h.name) {
+                    return Err(NetworkMapError::DuplicateHost(h.name.clone()));
+                }
+                host_aliases.insert(h.name.clone());
+                for a in h.aliases.iter() {
+                    if host_aliases.contains(a) {
+                        return Err(NetworkMapError::DuplicateHostAlias(h.name.clone(), a.clone(), h.name.clone()));
+                    }
+                    host_aliases.insert(a.clone());
+                }
+                #[cfg(feature = "sync")]
+                if h.sync.is_some_and(|s| s) {
+                    sync.push(h.name.clone());
+                }
+            }
+            subs.insert(s.subdomain.clone());
+        }
+        #[cfg(feature = "sync")]
+        if sync.len() > 1 {
+            return Err(NetworkMapError::MultipleSyncHosts(sync));
+        }
+        Ok(())
     }
 
     pub fn is_available(ip: IpAddr, port: Option<u16>) -> bool {
@@ -380,3 +415,23 @@ impl<'de> Deserialize<'de> for NetworkMap {
     }
 }
 
+#[derive(Debug)]
+pub enum NetworkMapError {
+    DuplicateHost(String),
+    DuplicateHostAlias(String, String, String),
+    DuplicateSubnet(String),
+    #[cfg(feature = "sync")]
+    MultipleSyncHosts(Vec<String>),
+}
+
+impl Display for NetworkMapError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NetworkMapError::DuplicateHost(h) => write!(f, "duplicate host: {}", h),
+            NetworkMapError::DuplicateHostAlias(h, a, _) => write!(f, "duplicate host alias: {} -> {}", h, a),
+            NetworkMapError::DuplicateSubnet(s) => write!(f, "duplicate subnet: {}", s),
+            #[cfg(feature = "sync")]
+            NetworkMapError::MultipleSyncHosts(h) => write!(f, "multiple sync hosts: {}", h.join(", ")),
+        }
+    }
+}

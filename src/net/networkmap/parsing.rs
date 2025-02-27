@@ -1,6 +1,6 @@
-use std::collections::HashSet;
 use std::fs::read_to_string;
 use std::path::Path;
+use crate::config::ConfigError;
 use crate::net::{NetworkMap, Subnet};
 use crate::parse::{DirPath, NotFoundPath, ParseError};
 
@@ -15,38 +15,30 @@ macro_rules! impl_from_parse_error {
 }
 
 use ParseError::*;
+
+use super::NetworkMapError;
 impl_from_parse_error!(IOError, std::io::Error);
 impl_from_parse_error!(SerdeJsonError, serde_json::Error);
 impl_from_parse_error!(DuplicateError, String);
 impl_from_parse_error!(FileNotFound, NotFoundPath);
 impl_from_parse_error!(PathIsDirectory, DirPath);
+impl_from_parse_error!(ConfigError, ConfigError);
+
+impl From<NetworkMapError> for ParseError {
+    fn from(value: NetworkMapError) -> Self {
+        ConfigError(value.into())
+    }
+}
 
 impl TryFrom<Vec<Subnet>> for NetworkMap {
-    type Error = ParseError;
+    type Error = NetworkMapError;
 
     fn try_from(value: Vec<Subnet>) -> Result<Self, Self::Error> {
         let mut n = NetworkMap::default();
-        let mut subs = HashSet::new();
-        let mut host_aliases: HashSet<String> = HashSet::new();
-        for s in value.into_iter() {
-            if subs.contains(&s.subdomain) {
-                return Err(ParseError::from(s.subdomain));
-            }
-            for h in s.get_hosts() {
-                if host_aliases.contains(&h.name) {
-                    return Err(ParseError::from(h.name.clone()));
-                }
-                host_aliases.insert(h.name.clone());
-                for a in h.aliases.iter() {
-                    if host_aliases.contains(a) {
-                        return Err(ParseError::from(a.clone()));
-                    }
-                    host_aliases.insert(a.clone());
-                }
-            }
-            subs.insert(s.subdomain.clone());
+        for s in value {
             n.add_subnet(s);
-        }
+        } 
+        n.check()?;
         Ok(n)
     }
 }
@@ -67,10 +59,7 @@ impl<'a> TryFrom<&'a str> for NetworkMap {
                 Err(_) => serde_json::from_str(&content)?,
             };
 
-            match NetworkMap::try_from(subnets) {
-                Ok(nm) => Ok(nm),
-                Err(e) => Err(e as ParseError),
-            }
+            Ok(NetworkMap::try_from(subnets)?)
         }
     }
 }

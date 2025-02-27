@@ -4,14 +4,35 @@ use {
     crate::{parse::ParseError,net::Subnet},
     std::fs::read_to_string,
 };
-use crate::net::NetworkMap;
-use std::path::PathBuf;
+use crate::net::{NetworkMap, NetworkMapError};
+use std::{path::PathBuf, fmt::Display};
 
 #[cfg_attr(feature = "serde", derive(Serialize,Deserialize))]
 #[derive(Debug,Default)]
 pub struct Config {
     pub networkmap: NetworkMap,
     pub settings: Settings,
+}
+
+#[derive(Debug)]
+pub enum ConfigError {
+    NetworkMap(NetworkMapError),
+    // Settings(SettingsError),
+}
+
+impl Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConfigError::NetworkMap(e) => write!(f, "networkmap error: {}", e),
+            // ConfigError::Settings(e) => write!(f, "SettingsError: {}", e),
+        }
+    }
+}
+
+impl From<NetworkMapError> for ConfigError {
+    fn from(value: NetworkMapError) -> Self {
+        ConfigError::NetworkMap(value)
+    }
 }
 
 impl Config {
@@ -24,6 +45,12 @@ impl Config {
             .unwrap_or(PathBuf::new())
             .join(CONFIG_SEARCH_FOLDER[0])
             .join(CONFIG_SEARCH_FILE[0])
+    }
+
+    pub fn check(&self) -> Result<(), ConfigError> {
+        self.networkmap.check()?;
+        // self.settings.check()?;
+        Ok(())
     }
 }
 
@@ -39,9 +66,13 @@ impl<'a> TryFrom<&'a str> for Config {
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
         let content = read_to_string(value)?;
         if value.ends_with(".yml") || value.ends_with(".yaml") {
-            Ok(serde_yml::from_str(&content)?)
+            let c: Self = serde_yml::from_str(&content)?;
+            c.check()?;
+            Ok(c)
         } else if value.ends_with(".toml") {
-            Ok(toml::from_str(&content)?)
+            let c: Self = toml::from_str(&content)?;
+            c.check()?;
+            Ok(c)
         } else {
             match serde_json::from_str(&content) {
                 Ok(c) => Ok(c),

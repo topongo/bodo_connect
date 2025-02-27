@@ -378,6 +378,8 @@ impl Cmd {
                 let c: Config = serde_yml::from_str(&output)?;
                 #[cfg(debug_assertions)]
                 debug!("configuration pulled: {:?}", c);
+                debug!("checking networkmap");
+                c.check()?;
                 #[cfg(not(debug_assertions))]
                 {
                     let target = self.config

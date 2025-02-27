@@ -1,3 +1,5 @@
+use crate::config::ConfigError;
+
 #[derive(Debug)]
 pub struct NotFoundPath {
     inner: String
@@ -52,5 +54,6 @@ pub enum ParseError {
     SerdeYamlError(serde_yml::Error),
     DuplicateError(String),
     FileNotFound(NotFoundPath),
-    PathIsDirectory(DirPath)
+    PathIsDirectory(DirPath),
+    ConfigError(ConfigError),
 }
