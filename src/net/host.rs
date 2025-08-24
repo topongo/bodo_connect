@@ -37,6 +37,9 @@ pub struct Host {
     #[cfg(feature = "sync")]
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub sync: Option<bool>,
+    #[cfg(feature = "direct")]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub addrs: Option<Vec<String>>,
 }
 
 impl Host {
@@ -49,6 +52,7 @@ impl Host {
         aliases: HashSet<String>,
         #[cfg(feature = "wake")] waker: Option<Waker>,
         #[cfg(feature = "sync")] sync: Option<bool>,
+        #[cfg(feature = "direct")] addrs: Option<Vec<String>>,
     ) -> Self {
         Self {
             name,
@@ -61,6 +65,8 @@ impl Host {
             waker,
             #[cfg(feature = "sync")]
             sync,
+            #[cfg(feature = "direct")]
+            addrs,
         }
     }
 

@@ -81,7 +81,7 @@ impl NetworkMap {
         Ok(())
     }
 
-    pub fn is_available(ip: IpAddr, port: Option<u16>) -> bool {
+    pub fn is_available(ip: impl ToString, port: Option<u16>) -> bool {
         let rp = ResolvePolicy::ResolveToIPv4;
         match match port {
             Some(p) => TcpTarget::new(ip.to_string(), p, Duration::from_millis(2000), rp)
@@ -238,12 +238,16 @@ impl NetworkMap {
     pub async fn to_sshfs(
         &self,
         target: &Host,
-        subnet: Option<&Subnet>,
+        connection: ConnectionMethod<'_>,
         remote: String,
         mountpoint: String
     ) -> Box<dyn Process> {
         debug!("generating route to target");
-        let (target_id, route) = self.hops_gen(target, subnet).await;
+        let (target_id, route) = match connection {
+            #[cfg(feature = "direct")]
+            ConnectionMethod::Direct(addr) => (Hop::new(target.user.clone(), addr, target.port), vec![]),
+            ConnectionMethod::ViaSubnet(subnet) => self.hops_gen(target, subnet).await,
+        };
         info!("route generated: {}", join_hops(&target_id, &route, " -> "));
 
         Box::new(SSHFSProcess::new(
@@ -299,12 +303,16 @@ impl NetworkMap {
     pub async fn to_ssh(
         &self,
         target: &Host,
-        subnet: Option<&Subnet>,
+        connection: ConnectionMethod<'_>,
         command: &[String],
         extra_options: Option<SSHOptionStore>,
     ) -> Box<dyn Process> {
         debug!("generating route to target");
-        let (target_id, route) = self.hops_gen(target, subnet).await;
+        let (target_id, route) = match connection {
+            #[cfg(feature = "direct")]
+            ConnectionMethod::Direct(addr) => (Hop::new(target.user.clone(), addr, target.port), vec![]),
+            ConnectionMethod::ViaSubnet(subnet) => self.hops_gen(target, subnet).await,
+        };
 
         info!("route generated: {}", join_hops(&target_id, &route, " -> "));
 
@@ -358,7 +366,7 @@ impl NetworkMap {
                     let mut wake_proc = self
                         .to_ssh(
                             master,
-                            None,
+                            ConnectionMethod::ViaSubnet(None),
                             &["wol".to_string(), mac.to_string()],
                             None,
                         )
@@ -430,4 +438,10 @@ impl Display for NetworkMapError {
             NetworkMapError::MultipleSyncHosts(h) => write!(f, "multiple sync hosts: {}", h.join(", ")),
         }
     }
+}
+
+pub enum ConnectionMethod<'a> {
+    ViaSubnet(Option<&'a Subnet>),
+    #[cfg(feature = "direct")]
+    Direct(String),
 }

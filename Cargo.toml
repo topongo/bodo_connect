@@ -36,6 +36,7 @@ log = ["dep:log", "dep:lazy_static", "dep:colored"]
 rsync = ["cmd"]
 sshfs = ["cmd"]
 sync = ["cmd"]
+direct = []
 
 [[bin]]
 name = "bodoConnect"

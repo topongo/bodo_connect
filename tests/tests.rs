@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 
 use futures::executor::block_on;
-use bodo_connect::{net::{NetworkMap, Subnet}, ssh::{options::GenericOption, SSHOptionStore}};
+use bodo_connect::{net::{ConnectionMethod, NetworkMap, Subnet}, ssh::{options::GenericOption, SSHOptionStore}};
 
 const NETWORKMAP_EXAMPLE: &str = r#"
 [
@@ -129,7 +129,7 @@ fn parsing_test() {
     let nm = NetworkMap::try_from(vec![subnet]).unwrap();
     assert_eq!(block_on(nm.to_ssh(
         nm.get_host("x").unwrap(),
-        None,
+        ConnectionMethod::ViaSubnet(None),
         &["rm".to_owned(), "-rf".to_owned(), "/".to_owned()],
         None
     )).to_string(), "ssh -J martian@mars.orbit:23 -p 5 x@10.8.5.2 rm -rf /");
@@ -140,7 +140,7 @@ fn parsing_test() {
 fn sshfs() {
     let nm = NetworkMap::try_from(serde_json::from_str::<Vec<Subnet>>(NETWORKMAP_EXAMPLE).unwrap()).unwrap();
     let target = nm.get_host("phobos").unwrap();
-    let proc = block_on(nm.to_sshfs(target, None, "/home/pi".to_string(), "/mnt/temp".to_string()));
+    let proc = block_on(nm.to_sshfs(target, ConnectionMethod::ViaSubnet(None), "/home/pi".to_string(), "/mnt/temp".to_string()));
     println!("{}", proc)
 }
 
@@ -151,7 +151,7 @@ async fn uncertainty() {
     for _ in 0..3 {
         let current_subnet = nm.find_current_subnet().await;
 
-        let proc = nm.to_ssh(nm.get_host("mars").unwrap(), current_subnet, &["echo".to_owned()], None).await;
+        let proc = nm.to_ssh(nm.get_host("mars").unwrap(), ConnectionMethod::ViaSubnet(current_subnet), &["echo".to_owned()], None).await;
         assert_eq!(proc.to_string(), "ssh martian@example.com echo");
     }
 }
@@ -164,7 +164,7 @@ fn custom_ssh_command() {
     let _sub = nm.get_host_subnet(mars);
     let mut opts = SSHOptionStore::new(Some("ssh -L 8000:localhost:5000".to_owned()));
     opts.add_option(Box::new(GenericOption::Switch("v")));
-    let ssh = block_on(nm.to_ssh(mars, None, &vec!["echo".to_owned()], Some(opts)));
+    let ssh = block_on(nm.to_ssh(mars, ConnectionMethod::ViaSubnet(None), &vec!["echo".to_owned()], Some(opts)));
     assert_eq!(ssh.to_string(), "ssh -L 8000:localhost:5000 -J martian@example.com -p 444 -v rover@192.168.1.2 echo");
 
     // Use rsh for insecure but fastest connection
@@ -172,7 +172,7 @@ fn custom_ssh_command() {
     opts.add_option(Box::new(GenericOption::Value("escape", "~".to_owned())));
     let ssh = block_on(nm.to_ssh(
         nm.get_host("mars").unwrap(),
-        None,
+        ConnectionMethod::ViaSubnet(None),
         &["echo".to_owned()],
         Some(opts)
     ));

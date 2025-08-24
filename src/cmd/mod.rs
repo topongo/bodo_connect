@@ -10,6 +10,7 @@ pub use runtime_error::RuntimeError;
 use crate::config::Config;
 #[cfg(feature = "log")]
 use crate::logger::CONSOLE_LOGGER;
+use crate::net::ConnectionMethod;
 #[allow(unused_imports)]
 #[cfg(not(feature = "log"))]
 use crate::{error, warn, info, debug};
@@ -206,12 +207,32 @@ impl Cmd {
                 }
             }
 
-            let current_subnet = nm.find_current_subnet().await;
+            #[cfg(feature = "direct")]
+            let connection = {
+                debug!("check if we can get a direct connection");
+                if let Some(addrs) = &target.addrs {
+                    match addrs.iter().find(|addr| NetworkMap::is_available(addr, Some(target.port))) {
+                        Some(addr) => {
+                            debug!("direct connection is available using address {}", addr);
+                            ConnectionMethod::Direct(addr.clone())
+                        }
+                        None => {
+                            debug!("no direct address is available");
+                            ConnectionMethod::ViaSubnet(nm.find_current_subnet().await)
+                        }
+                    }
+                } else {
+                    debug!("direct ips not set");
+                    ConnectionMethod::ViaSubnet(nm.find_current_subnet().await)
+                }
+            };
+            #[cfg(not(feature = "direct"))]
+            let connection = ConnectionMethod::ViaSubnet(nm.find_current_subnet().await);
 
             #[cfg(feature = "sshfs")]
             let mut proc = if self.sshfs {
                 if self.extra.len() == 2 {
-                    nm.to_sshfs(target, current_subnet, self.extra[0].clone(), self.extra[1].clone()).await
+                    nm.to_sshfs(target, connection, self.extra[0].clone(), self.extra[1].clone()).await
                 } else {
                     return if self.extra.len() < 2 {
                         Err(RuntimeError::TooFewArguments)
@@ -224,12 +245,12 @@ impl Cmd {
                     }
                 }
             } else {
-                nm.to_ssh(target, current_subnet, &self.extra, Some(extra_options)).await
+                nm.to_ssh(target, connection, &self.extra, Some(extra_options)).await
             };
 
             #[cfg(not(feature = "sshfs"))]
-            let mut proc = nm.to_ssh(target, current_subnet, &mut self.extra, Some(extra_options)).await;
-            
+            let mut proc = nm.to_ssh(target, connection, &mut self.extra, Some(extra_options)).await;
+
             #[cfg(feature = "wake")]
             if self.wake {
                 #[cfg(feature = "log")]
