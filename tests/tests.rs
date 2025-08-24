@@ -65,7 +65,7 @@ fn migration_test() {
     use bodo_connect::net::Subnet;
     use bodo_connect::waker::Waker;
     use reqwest::Method;
-    
+
     let map: Vec<Subnet> = serde_json::from_str(NETWORKMAP_EXAMPLE).unwrap();
     toml::to_string(&Waker::HttpWaker {method: Method::GET, url: "https://example.com".to_string()}).unwrap();
     let h = map[0].get_hosts()[0];

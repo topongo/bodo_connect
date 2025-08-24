@@ -98,7 +98,7 @@ impl Cmd {
         let mut results = vec![];
         for i in CONFIG_SEARCH_FOLDER
             .iter()
-            .map(|f| home_dir.join(f)) 
+            .map(|f| home_dir.join(f))
         {
             if i.exists() {
                 for j in CONFIG_SEARCH_FILE.iter() {
@@ -154,7 +154,7 @@ impl Cmd {
                     _ => LevelFilter::Warn,
                 }
             });
-        } 
+        }
 
         if self.migrate_to_yaml {
             return self.migrate_config()
@@ -312,7 +312,7 @@ impl Cmd {
                 return Ok(())
             }
         }
-        
+
         debug!("configurations found: {:?}", nms);
         if let Some(f) = nms.iter().filter(|f| f.ends_with(".json")).nth(0) {
             let cfg = Config::try_from(f.as_str())?;
@@ -332,7 +332,7 @@ impl Cmd {
     pub async fn sync_config(&mut self) -> Result<(), RuntimeError> {
 
         debug_assert!(self.pull_config || self.push_config);
-        
+
         // let mut proc = nm.to_ssh(target, subnet, command, extra_options)
         let nm = self.load_cfg()?.networkmap;
         let target = nm.get_sync_host().ok_or(RuntimeError::SyncError("no sync host has been set".to_owned()))?;
@@ -345,11 +345,11 @@ impl Cmd {
         let proc = nm.to_ssh_sync(target, None, push.is_some()).await;
         match push {
             Some(c) => {
-                let captured = proc 
+                let captured = proc
                     .exec()
                     .stdin(serde_yml::to_string(&c).unwrap().as_str())
                     .capture();
-                
+
                 match captured {
                     Ok(e) => {
                         if e.success() {

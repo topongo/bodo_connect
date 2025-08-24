@@ -291,7 +291,7 @@ impl NetworkMap {
             use crate::config::Config;
             Config::default_path(None).to_string_lossy().to_string()
         };
-        
+
         if push {
             command.append(&mut vec!["cat".to_owned(), ">".to_owned(), remote_config]);
         } else {
