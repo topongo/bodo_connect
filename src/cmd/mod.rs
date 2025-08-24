@@ -211,7 +211,7 @@ impl Cmd {
             let connection = {
                 debug!("check if we can get a direct connection");
                 if let Some(addrs) = &target.addrs {
-                    match addrs.iter().find(|addr| NetworkMap::is_available(addr, Some(target.port))) {
+                    match addrs.iter().find(|addr| crate::net::NetworkMap::is_available(addr, Some(target.port))) {
                         Some(addr) => {
                             debug!("direct connection is available using address {}", addr);
                             ConnectionMethod::Direct(addr.clone())
