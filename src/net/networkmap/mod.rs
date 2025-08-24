@@ -27,13 +27,6 @@ use crate::waker::Waker;
 
 const CLOUD_FLARE: IpAddr = IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1));
 
-fn get_resolve_policy(i: IpAddr) -> ResolvePolicy {
-    match i {
-        IpAddr::V4(..) => ResolvePolicy::ResolveToIPv4,
-        IpAddr::V6(..) => ResolvePolicy::ResolveToIPv6,
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct NetworkMap {
     subnets: HashMap<String, Subnet>,
@@ -89,7 +82,7 @@ impl NetworkMap {
     }
 
     pub fn is_available(ip: IpAddr, port: Option<u16>) -> bool {
-        let rp = get_resolve_policy(ip);
+        let rp = ResolvePolicy::ResolveToIPv4;
         match match port {
             Some(p) => TcpTarget::new(ip.to_string(), p, Duration::from_millis(2000), rp)
                 .check_availability(),
