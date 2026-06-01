@@ -1,3 +1,8 @@
+# Archive Notice
+> [!WARNING]
+> This repository has been archived in favor or https://git.prabo.org/topongo/bodo_connect
+
+
 # bodo_connect
 * A library for mapping your hosts in the world wide web.
 * A tool for connecting to any host of your map using ssh
